@@ -475,13 +475,20 @@
       li.dataset.id = c.id;
 
       const handle = document.createElement('span');
-      handle.className = 'drag-handle';
+      handle.className = 'drag-handle cat-drag';
       handle.setAttribute('aria-label', 'Déplacer');
       handle.innerHTML = `<svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M4 7h16v2H4V7Zm0 4h16v2H4v-2Zm0 4h16v2H4v-2Z"/></svg>`;
       handle.addEventListener('pointerdown', (e) => startDrag(e, li, catList, '.cat-item', commitCatOrder));
 
-      const dot = document.createElement('span');
-      dot.className = 'cat-dot'; dot.style.background = c.color;
+      const dotBtn = document.createElement('button');
+      dotBtn.className = 'cat-dot-btn';
+      dotBtn.setAttribute('aria-label', 'Changer la couleur');
+      dotBtn.innerHTML = `<span class="cat-dot" style="background:${c.color}"></span>`;
+      dotBtn.addEventListener('click', () => {
+        const wasOpen = li.classList.contains('open');
+        catList.querySelectorAll('.cat-item.open').forEach((el) => el.classList.remove('open'));
+        if (!wasOpen) li.classList.add('open');
+      });
 
       const input = document.createElement('input');
       input.className = 'cat-name'; input.value = c.name;
@@ -502,11 +509,18 @@
         s.className = 'swatch' + (col === c.color ? ' sel' : '');
         s.style.background = col;
         s.setAttribute('aria-label', 'Couleur');
-        s.addEventListener('click', () => { c.color = col; save(); refreshAll(); renderCatList(); });
+        s.addEventListener('click', () => {
+          c.color = col; save();
+          dotBtn.firstElementChild.style.background = col;
+          colors.querySelectorAll('.swatch').forEach((sw) => sw.classList.remove('sel'));
+          s.classList.add('sel');
+          li.classList.remove('open');
+          refreshAll();
+        });
         colors.appendChild(s);
       });
 
-      li.append(handle, dot, input, del, colors);
+      li.append(handle, dotBtn, input, del, colors);
       catList.appendChild(li);
     });
   }

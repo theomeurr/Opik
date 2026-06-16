@@ -323,16 +323,21 @@ body {
 }
 .cat-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 .cat-list { list-style: none; margin: 0; padding: 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
-.cat-item { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 12px 13px; border-bottom: 1px solid var(--border); }
+.cat-item { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; padding: 7px 11px; border-bottom: 1px solid var(--border); }
 .cat-item:last-child { border-bottom: none; }
-.cat-name { flex: 1; min-width: 80px; border: none; background: transparent; font-size: 16px; font-weight: 500; color: var(--text); padding: 5px 0; outline: none; }
+.cat-dot-btn { border: none; background: transparent; padding: 6px; margin: -6px 0; cursor: pointer; display: grid; place-items: center; border-radius: 50%; flex-shrink: 0; }
+.cat-dot-btn:active { background: var(--surface-2); }
+.cat-dot-btn .cat-dot { margin: 0; width: 14px; height: 14px; box-shadow: 0 0 0 1px rgba(0, 0, 0, .05); }
+.cat-name { flex: 1; min-width: 80px; border: none; background: transparent; font-size: 15.5px; font-weight: 500; color: var(--text); padding: 7px 2px; outline: none; }
 .cat-name:focus { border-bottom: 1.5px solid var(--accent); }
-.cat-remove { border: none; background: var(--surface-2); color: var(--danger); width: 34px; height: 34px; border-radius: 10px; cursor: pointer; font-size: 15px; flex-shrink: 0; }
-.cat-remove:active { background: #fdeaea; }
-.cat-colors { display: flex; flex-wrap: wrap; gap: 10px; width: 100%; padding: 6px 2px 2px; }
-.swatch { width: 27px; height: 27px; border-radius: 50%; border: 2.5px solid transparent; cursor: pointer; padding: 0; transition: transform .12s var(--spring); }
+.cat-remove { border: none; background: transparent; color: var(--text-mute); width: 32px; height: 32px; border-radius: 9px; cursor: pointer; font-size: 15px; flex-shrink: 0; }
+.cat-remove:active { background: #fdeaea; color: var(--danger); }
+.cat-colors { display: none; flex-wrap: wrap; gap: 9px; width: 100%; padding: 4px 2px 8px; animation: viewIn .2s var(--spring); }
+.cat-item.open .cat-colors { display: flex; }
+.swatch { width: 26px; height: 26px; border-radius: 50%; border: 2.5px solid transparent; cursor: pointer; padding: 0; transition: transform .12s var(--spring); }
 .swatch.sel { border-color: #fff; box-shadow: 0 0 0 2.5px var(--text); }
 .swatch:active { transform: scale(.85); }
+.cat-drag { color: var(--text-mute); }
 
 /* ===== Barre de navigation flottante ===== */
 .tabbar { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--safe-bottom) + 14px); width: calc(100% - 32px); max-width: 430px; z-index: 30; }

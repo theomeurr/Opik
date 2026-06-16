@@ -15,7 +15,6 @@
     'Autres',
   ];
 
-  // --- État ---
   let state = load();
 
   function uid() {
@@ -43,26 +42,25 @@
   function fallbackCatId() {
     return state.categories[state.categories.length - 1]?.id || state.categories[0]?.id;
   }
-
   function catName(id) {
     return state.categories.find((c) => c.id === id)?.name || '—';
   }
+  function norm(s) { return s.trim().toLowerCase(); }
 
-  function norm(s) {
-    return s.trim().toLowerCase();
-  }
-
-  // --- Éléments DOM ---
+  // --- DOM ---
   const $ = (sel) => document.querySelector(sel);
   const addForm = $('#addForm');
   const addInput = $('#addInput');
   const addCategory = $('#addCategory');
   const viewListe = $('#view-liste');
   const viewHist = $('#view-historique');
+  const viewCats = $('#view-categories');
   const histList = $('#historiqueList');
   const searchInput = $('#searchInput');
+  const listeBadge = $('#listeBadge');
+  const pageTitle = $('#pageTitle');
 
-  // --- Actions sur les données ---
+  // --- Données ---
   function addItem(name, categoryId) {
     const clean = name.trim();
     if (!clean) return;
@@ -74,33 +72,20 @@
       if (categoryId) existing.categoryId = categoryId;
     } else {
       state.items.push({
-        id: uid(),
-        name: clean,
-        categoryId: categoryId || fallbackCatId(),
-        onList: true,
-        checked: false,
-        createdAt: Date.now(),
-        lastUsed: Date.now(),
+        id: uid(), name: clean, categoryId: categoryId || fallbackCatId(),
+        onList: true, checked: false, createdAt: Date.now(), lastUsed: Date.now(),
       });
     }
     save();
   }
-
   function toggleChecked(id) {
     const it = state.items.find((i) => i.id === id);
-    if (!it) return;
-    it.checked = !it.checked;
-    save();
+    if (it) { it.checked = !it.checked; save(); }
   }
-
   function removeFromList(id) {
     const it = state.items.find((i) => i.id === id);
-    if (!it) return;
-    it.onList = false;
-    it.checked = false;
-    save();
+    if (it) { it.onList = false; it.checked = false; save(); }
   }
-
   function toggleOnList(id) {
     const it = state.items.find((i) => i.id === id);
     if (!it) return;
@@ -108,49 +93,50 @@
     if (it.onList) { it.checked = false; it.lastUsed = Date.now(); }
     save();
   }
-
   function clearChecked() {
     state.items.forEach((it) => { if (it.checked) { it.onList = false; it.checked = false; } });
     save();
   }
-
   function setItemCategory(id, categoryId) {
     const it = state.items.find((i) => i.id === id);
     if (it) { it.categoryId = categoryId; save(); }
   }
 
-  // --- Rendu : sélecteur de catégorie de la barre d'ajout ---
+  // --- Sélecteur de catégorie (barre d'ajout) ---
   function renderCategoryOptions() {
     const prev = addCategory.value;
     addCategory.innerHTML = '';
     state.categories.forEach((c) => {
       const opt = document.createElement('option');
-      opt.value = c.id;
-      opt.textContent = c.name;
+      opt.value = c.id; opt.textContent = c.name;
       addCategory.appendChild(opt);
     });
     if (state.categories.some((c) => c.id === prev)) addCategory.value = prev;
   }
 
-  // --- Rendu : Liste active ---
+  // --- Badge (articles restants) ---
+  function updateBadge() {
+    const n = state.items.filter((it) => it.onList && !it.checked).length;
+    if (n > 0) { listeBadge.textContent = n > 99 ? '99+' : n; listeBadge.classList.remove('hidden'); }
+    else listeBadge.classList.add('hidden');
+  }
+
+  // --- Vue : Liste ---
   function renderListe() {
     const onList = state.items.filter((it) => it.onList);
     viewListe.innerHTML = '';
 
     if (onList.length === 0) {
       viewListe.innerHTML = `
-        <div class="empty">
-          <span class="emoji">🛒</span>
-          Votre liste est vide.<br />Ajoutez un article ci-dessus.
-        </div>`;
+        <div class="empty"><span class="emoji">🛒</span>
+        Votre liste est vide.<br />Ajoutez un article ci-dessus.</div>`;
+      updateBadge();
       return;
     }
 
-    // Groupe par catégorie, dans l'ordre des catégories
     state.categories.forEach((cat) => {
       const items = onList.filter((it) => it.categoryId === cat.id);
       if (items.length === 0) return;
-      // non cochés d'abord, puis cochés
       items.sort((a, b) => (a.checked - b.checked) || a.name.localeCompare(b.name, 'fr'));
       const remaining = items.filter((i) => !i.checked).length;
 
@@ -158,7 +144,6 @@
       group.className = 'cat-group';
       group.innerHTML = `<div class="cat-group-title">${escapeHtml(cat.name)}
         <span class="cat-group-count">${remaining ? remaining : '✓'}</span></div>`;
-
       const card = document.createElement('div');
       card.className = 'card';
       items.forEach((it) => card.appendChild(itemRow(it)));
@@ -166,7 +151,6 @@
       viewListe.appendChild(group);
     });
 
-    // Articles dont la catégorie n'existe plus
     const orphans = onList.filter((it) => !state.categories.some((c) => c.id === it.categoryId));
     if (orphans.length) {
       const group = document.createElement('div');
@@ -189,6 +173,7 @@
       bar.appendChild(btn);
       viewListe.appendChild(bar);
     }
+    updateBadge();
   }
 
   function itemRow(it) {
@@ -200,18 +185,15 @@
       <button class="item-del" aria-label="Retirer">×</button>`;
     row.addEventListener('click', (e) => {
       if (e.target.closest('.item-del')) return;
-      toggleChecked(it.id);
-      renderListe();
+      toggleChecked(it.id); renderListe();
     });
     row.querySelector('.item-del').addEventListener('click', (e) => {
-      e.stopPropagation();
-      removeFromList(it.id);
-      renderListe();
+      e.stopPropagation(); removeFromList(it.id); renderListe();
     });
     return row;
   }
 
-  // --- Rendu : Historique ---
+  // --- Vue : Historique ---
   function renderHistorique() {
     const q = norm(searchInput.value || '');
     let items = state.items.slice();
@@ -220,23 +202,16 @@
 
     if (state.items.length === 0) {
       histList.innerHTML = `
-        <div class="empty">
-          <span class="emoji">📝</span>
-          Aucun historique pour le moment.<br />Tout ce que vous ajoutez apparaîtra ici.
-        </div>`;
+        <div class="empty"><span class="emoji">📝</span>
+        Aucun historique pour le moment.<br />Tout ce que vous ajoutez apparaîtra ici.</div>`;
       return;
     }
-    if (items.length === 0) {
-      histList.innerHTML = `<div class="empty">Aucun résultat.</div>`;
-      return;
-    }
+    if (items.length === 0) { histList.innerHTML = `<div class="empty">Aucun résultat.</div>`; return; }
 
-    // groupé par catégorie
     state.categories.forEach((cat) => {
       const catItems = items.filter((it) => it.categoryId === cat.id)
         .sort((a, b) => b.lastUsed - a.lastUsed);
       if (catItems.length === 0) return;
-
       const group = document.createElement('div');
       group.className = 'cat-group';
       group.innerHTML = `<div class="cat-group-title">${escapeHtml(cat.name)}</div>`;
@@ -251,17 +226,14 @@
   function histRow(it) {
     const row = document.createElement('div');
     row.className = 'hrow';
-
     const name = document.createElement('span');
-    name.className = 'hrow-name';
-    name.textContent = it.name;
+    name.className = 'hrow-name'; name.textContent = it.name;
 
     const sel = document.createElement('select');
     sel.className = 'hrow-cat';
     state.categories.forEach((c) => {
       const opt = document.createElement('option');
-      opt.value = c.id;
-      opt.textContent = c.name;
+      opt.value = c.id; opt.textContent = c.name;
       if (c.id === it.categoryId) opt.selected = true;
       sel.appendChild(opt);
     });
@@ -271,23 +243,16 @@
     btn.className = 'hadd' + (it.onList ? ' on' : '');
     btn.textContent = it.onList ? '✓' : '+';
     btn.setAttribute('aria-label', it.onList ? 'Retirer de la liste' : 'Ajouter à la liste');
-    btn.addEventListener('click', () => {
-      toggleOnList(it.id);
-      renderHistorique();
-    });
+    btn.addEventListener('click', () => { toggleOnList(it.id); renderHistorique(); renderListe(); });
 
     row.append(name, sel, btn);
     return row;
   }
 
-  // --- Modal catégories ---
-  const catModal = $('#catModal');
+  // --- Vue : Catégories ---
   const catList = $('#catList');
   const addCatForm = $('#addCatForm');
   const newCatInput = $('#newCatInput');
-
-  function openCatModal() { renderCatList(); catModal.classList.remove('hidden'); }
-  function closeCatModal() { catModal.classList.add('hidden'); }
 
   function renderCatList() {
     catList.innerHTML = '';
@@ -296,30 +261,24 @@
       li.className = 'cat-item';
 
       const input = document.createElement('input');
-      input.className = 'cat-name';
-      input.value = c.name;
+      input.className = 'cat-name'; input.value = c.name;
       input.addEventListener('change', () => {
         const v = input.value.trim();
         if (v) { c.name = v; save(); refreshAll(); } else { input.value = c.name; }
       });
 
       const up = document.createElement('button');
-      up.className = 'cat-move';
-      up.textContent = '↑';
-      up.disabled = idx === 0;
+      up.className = 'cat-move'; up.textContent = '↑';
       up.style.opacity = idx === 0 ? '.3' : '1';
       up.addEventListener('click', () => moveCat(idx, -1));
 
       const down = document.createElement('button');
-      down.className = 'cat-move';
-      down.textContent = '↓';
-      down.disabled = idx === state.categories.length - 1;
+      down.className = 'cat-move'; down.textContent = '↓';
       down.style.opacity = idx === state.categories.length - 1 ? '.3' : '1';
       down.addEventListener('click', () => moveCat(idx, 1));
 
       const del = document.createElement('button');
-      del.className = 'cat-remove';
-      del.textContent = '🗑';
+      del.className = 'cat-remove'; del.textContent = '🗑';
       del.setAttribute('aria-label', 'Supprimer la catégorie');
       del.addEventListener('click', () => removeCat(c.id));
 
@@ -333,22 +292,16 @@
     if (j < 0 || j >= state.categories.length) return;
     const arr = state.categories;
     [arr[idx], arr[j]] = [arr[j], arr[idx]];
-    save();
-    refreshAll();
-    renderCatList();
+    save(); refreshAll(); renderCatList();
   }
-
   function removeCat(id) {
     if (state.categories.length <= 1) { alert('Gardez au moins une catégorie.'); return; }
     const target = fallbackCatId() === id
-      ? state.categories.find((c) => c.id !== id).id
-      : fallbackCatId();
+      ? state.categories.find((c) => c.id !== id).id : fallbackCatId();
     if (!confirm('Supprimer cette catégorie ? Ses articles iront dans « ' + catName(target) + ' ».')) return;
     state.items.forEach((it) => { if (it.categoryId === id) it.categoryId = target; });
     state.categories = state.categories.filter((c) => c.id !== id);
-    save();
-    refreshAll();
-    renderCatList();
+    save(); refreshAll(); renderCatList();
   }
 
   addCatForm.addEventListener('submit', (e) => {
@@ -357,58 +310,82 @@
     if (!v) return;
     state.categories.push({ id: uid(), name: v });
     newCatInput.value = '';
-    save();
-    refreshAll();
-    renderCatList();
+    save(); refreshAll(); renderCatList();
   });
 
-  // --- Onglets ---
-  document.querySelectorAll('.tab').forEach((tab) => {
-    tab.addEventListener('click', () => {
-      document.querySelectorAll('.tab').forEach((t) => t.classList.remove('active'));
-      tab.classList.add('active');
-      const which = tab.dataset.tab;
-      viewListe.classList.toggle('hidden', which !== 'liste');
-      viewHist.classList.toggle('hidden', which !== 'historique');
-      if (which === 'historique') renderHistorique();
+  // --- Navigation (barre flottante) ---
+  const TABS = ['liste', 'historique', 'categories'];
+  const TITLES = { liste: 'Liste', historique: 'Historique', categories: 'Catégories' };
+  const VIEWS = { liste: viewListe, historique: viewHist, categories: viewCats };
+  const indicator = $('#tabIndicator');
+  const tabBtns = Array.from(document.querySelectorAll('.tab-item'));
+  let currentTab = 'liste';
+
+  function switchTab(tab) {
+    if (tab === currentTab) return;
+    const from = TABS.indexOf(currentTab);
+    const to = TABS.indexOf(tab);
+    const dir = to > from ? 'from-right' : 'from-left';
+    currentTab = tab;
+
+    // indicateur qui glisse
+    indicator.style.setProperty('--i', to);
+
+    // boutons actifs
+    tabBtns.forEach((b) => b.classList.toggle('active', b.dataset.tab === tab));
+
+    // titre + barre d'ajout (visible uniquement sur Liste)
+    pageTitle.textContent = TITLES[tab];
+    addForm.classList.toggle('hidden', tab !== 'liste');
+
+    // rendu de la vue ciblée
+    if (tab === 'liste') renderListe();
+    else if (tab === 'historique') renderHistorique();
+    else if (tab === 'categories') renderCatList();
+
+    // affichage + animation directionnelle
+    TABS.forEach((t) => {
+      const v = VIEWS[t];
+      if (t === tab) {
+        v.classList.remove('hidden', 'from-right', 'from-left');
+        void v.offsetWidth; // relance l'animation
+        v.classList.add(dir);
+      } else {
+        v.classList.add('hidden');
+      }
     });
-  });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
 
-  // --- Form d'ajout ---
+  tabBtns.forEach((btn) => btn.addEventListener('click', () => switchTab(btn.dataset.tab)));
+
+  // --- Ajout ---
   addForm.addEventListener('submit', (e) => {
     e.preventDefault();
     addItem(addInput.value, addCategory.value);
-    addInput.value = '';
-    addInput.focus();
+    addInput.value = ''; addInput.focus();
     renderListe();
   });
-
   searchInput.addEventListener('input', renderHistorique);
-
-  $('#manageCats').addEventListener('click', openCatModal);
-  catModal.querySelectorAll('[data-close]').forEach((el) => el.addEventListener('click', closeCatModal));
 
   // --- Utilitaires ---
   function escapeHtml(s) {
     return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   }
-
   function refreshAll() {
     renderCategoryOptions();
-    renderListe();
-    if (!viewHist.classList.contains('hidden')) renderHistorique();
+    if (currentTab === 'liste') renderListe(); else updateBadge();
+    if (currentTab === 'historique') renderHistorique();
   }
 
-  // --- iOS install hint ---
+  // --- Astuce installation iOS ---
   (function iosHint() {
     const hint = $('#iosHint');
     const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
     const standalone = window.navigator.standalone === true ||
       window.matchMedia('(display-mode: standalone)').matches;
     const dismissed = localStorage.getItem('iosHintDismissed') === '1';
-    if (isIOS && !standalone && !dismissed) {
-      hint.classList.remove('hidden');
-    }
+    if (isIOS && !standalone && !dismissed) hint.classList.remove('hidden');
     $('#iosHintClose').addEventListener('click', () => {
       hint.classList.add('hidden');
       localStorage.setItem('iosHintDismissed', '1');
@@ -417,9 +394,7 @@
 
   // --- Service worker ---
   if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('sw.js').catch(() => {});
-    });
+    window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
   }
 
   // --- Init ---

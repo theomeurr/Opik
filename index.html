@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+  <title>Courses</title>
+  <meta name="description" content="Liste de courses simple et épurée." />
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.webmanifest" />
+  <meta name="theme-color" content="#ffffff" />
+
+  <!-- iOS -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Courses" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
+
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <h1>Courses</h1>
+      <button id="manageCats" class="icon-btn" aria-label="Gérer les catégories" title="Catégories">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm8.94 4a7.9 7.9 0 0 0-.13-1.45l2.11-1.65-2-3.46-2.49 1a8 8 0 0 0-2.5-1.45L15.5 2h-7l-.43 2.94a8 8 0 0 0-2.5 1.45l-2.49-1-2 3.46 2.11 1.65a8 8 0 0 0 0 2.9L1.08 15l2 3.46 2.49-1a8 8 0 0 0 2.5 1.45L8.5 22h7l.43-2.59a8 8 0 0 0 2.5-1.45l2.49 1 2-3.46-2.11-1.65c.08-.48.13-.96.13-1.45Z"/></svg>
+      </button>
+    </header>
+
+    <form id="addForm" class="add-bar" autocomplete="off">
+      <input id="addInput" class="add-input" type="text" placeholder="Ajouter un article…" enterkeyhint="done" />
+      <select id="addCategory" class="add-cat" aria-label="Catégorie"></select>
+      <button type="submit" class="add-btn" aria-label="Ajouter">+</button>
+    </form>
+
+    <nav class="tabs" role="tablist">
+      <button class="tab active" data-tab="liste" role="tab">Liste</button>
+      <button class="tab" data-tab="historique" role="tab">Historique</button>
+    </nav>
+
+    <main class="content">
+      <section id="view-liste" class="view"></section>
+      <section id="view-historique" class="view hidden">
+        <div class="search-wrap">
+          <input id="searchInput" class="search-input" type="search" placeholder="Rechercher…" enterkeyhint="search" />
+        </div>
+        <div id="historiqueList"></div>
+      </section>
+    </main>
+  </div>
+
+  <!-- iOS install hint -->
+  <div id="iosHint" class="ios-hint hidden">
+    <span>Pour installer&nbsp;: <strong>Partager</strong> <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M12 3l4 4-1.4 1.4L13 6.8V15h-2V6.8L9.4 8.4 8 7l4-4Zm-7 8h3v2H7v6h10v-6h-2v-2h3a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2Z"/></svg> puis <strong>Sur l'écran d'accueil</strong></span>
+    <button id="iosHintClose" class="ios-hint-close" aria-label="Fermer">×</button>
+  </div>
+
+  <!-- Modal catégories -->
+  <div id="catModal" class="modal hidden" role="dialog" aria-modal="true" aria-label="Catégories">
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-sheet">
+      <div class="modal-head">
+        <h2>Catégories</h2>
+        <button class="modal-close" data-close aria-label="Fermer">×</button>
+      </div>
+      <form id="addCatForm" class="add-cat-form">
+        <input id="newCatInput" class="cat-input" type="text" placeholder="Nouvelle catégorie…" />
+        <button type="submit" class="add-btn">+</button>
+      </form>
+      <ul id="catList" class="cat-list"></ul>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

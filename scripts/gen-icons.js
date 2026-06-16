@@ -5,7 +5,7 @@ const fs = require('fs');
 const path = require('path');
 
 // --- palette ---
-const BG = [13, 13, 15];          // noir épuré #0d0d0f
+const BG = [26, 30, 33];          // #1a1e21
 const ACC_TOP = [242, 201, 76];   // #f2c94c (moutarde clair)
 const ACC_BOT = [154, 107, 0];    // #9a6b00 (curry foncé)
 const ACC_MID = [221, 165, 12];   // #dda50c
@@ -38,34 +38,48 @@ function archContains(px, py, cx, cy, ri, ro) {
   return d >= ri && d <= ro;
 }
 
+// Trapèze (corps du sac, plus large en haut), coins bas légèrement arrondis.
+function bagBodyContains(px, py, topY, botY, cx, topHW, botHW, r) {
+  if (py < topY || py > botY) return false;
+  const t = (py - topY) / (botY - topY);
+  const halfW = topHW + (botHW - topHW) * t;
+  const dx = Math.abs(px - cx);
+  if (dx > halfW) return false;
+  // arrondi des deux coins du bas
+  if (py > botY - r && dx > halfW - r) {
+    const ddx = dx - (halfW - r), ddy = py - (botY - r);
+    return ddx * ddx + ddy * ddy <= r * r;
+  }
+  return true;
+}
+
 // Composite la couleur d'un point (coordonnées 0..1). Renvoie [r,g,b,a].
 function sample(px, py) {
   let col = [0, 0, 0, 0];
   const over = (c) => { col = [c[0], c[1], c[2], 1]; };
 
-  // fond noir arrondi (iOS applique son propre masque)
+  // fond arrondi (iOS applique son propre masque)
   if (!roundedRectContains(px, py, 0, 0, 1, 1, 0.225)) return col;
   over(BG);
 
-  // corps du sac
-  const bx = 0.30, bw = 0.40, byTop = 0.435, bh = 0.355, br = 0.055;
-  const inBody = roundedRectContains(px, py, bx, byTop, bw, bh, br);
+  // corps du sac (trapèze)
+  const topY = 0.44, botY = 0.80, cx = 0.5, topHW = 0.225, botHW = 0.205;
+  const inBody = bagBodyContains(px, py, topY, botY, cx, topHW, botHW, 0.05);
 
-  // deux anses fines de type tote bag (dessinées avant le corps)
-  const handle = (cx) => archContains(px, py, cx, byTop, 0.052, 0.08);
-  if (handle(0.405) || handle(0.595)) over(ACC_MID);
+  // anse unique, fine, centrée (dessinée avant le corps)
+  if (archContains(px, py, cx, topY, 0.085, 0.115)) over(ACC_MID);
 
   // corps avec dégradé vertical
   if (inBody) {
-    const t = Math.min(1, Math.max(0, (py - byTop) / bh));
+    const t = Math.min(1, Math.max(0, (py - topY) / (botY - topY)));
     over(lerp(ACC_TOP, ACC_BOT, t));
 
     // coche blanche centrée sur le sac
-    const p1 = [0.40, 0.62];
-    const p2 = [0.468, 0.69];
-    const p3 = [0.62, 0.54];
-    if (capsuleContains(px, py, p1[0], p1[1], p2[0], p2[1], 0.026) ||
-        capsuleContains(px, py, p2[0], p2[1], p3[0], p3[1], 0.026)) over(WHITE);
+    const p1 = [0.405, 0.63];
+    const p2 = [0.47, 0.70];
+    const p3 = [0.62, 0.55];
+    if (capsuleContains(px, py, p1[0], p1[1], p2[0], p2[1], 0.027) ||
+        capsuleContains(px, py, p2[0], p2[1], p3[0], p3[1], 0.027)) over(WHITE);
   }
   return col;
 }

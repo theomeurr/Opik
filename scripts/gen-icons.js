@@ -47,12 +47,13 @@ function sample(px, py) {
   if (!roundedRectContains(px, py, 0, 0, 1, 1, 0.225)) return col;
   over(BG);
 
-  // corps du sac (rectangle arrondi, coins hauts plus marqués)
-  const bx = 0.285, bw = 0.43, byTop = 0.43, bh = 0.37;
-  const inBody = roundedRectContains(px, py, bx, byTop, bw, bh, 0.085);
+  // corps du sac
+  const bx = 0.30, bw = 0.40, byTop = 0.435, bh = 0.355, br = 0.055;
+  const inBody = roundedRectContains(px, py, bx, byTop, bw, bh, br);
 
-  // anse : demi-anneau au-dessus du corps (dessinée avant le corps)
-  if (archContains(px, py, 0.5, 0.455, 0.115, 0.155)) over(GREEN_MID);
+  // deux anses fines de type tote bag (dessinées avant le corps)
+  const handle = (cx) => archContains(px, py, cx, byTop, 0.052, 0.08);
+  if (handle(0.405) || handle(0.595)) over(GREEN_MID);
 
   // corps avec dégradé vertical
   if (inBody) {
@@ -60,9 +61,9 @@ function sample(px, py) {
     over(lerp(GREEN_TOP, GREEN_BOT, t));
 
     // coche blanche centrée sur le sac
-    const p1 = [0.40, 0.615];
-    const p2 = [0.468, 0.685];
-    const p3 = [0.62, 0.535];
+    const p1 = [0.40, 0.62];
+    const p2 = [0.468, 0.69];
+    const p3 = [0.62, 0.54];
     if (capsuleContains(px, py, p1[0], p1[1], p2[0], p2[1], 0.026) ||
         capsuleContains(px, py, p2[0], p2[1], p3[0], p3[1], 0.026)) over(WHITE);
   }

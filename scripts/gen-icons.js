@@ -1,12 +1,17 @@
 // Génère les icônes PNG de l'app (sans dépendance externe).
-// Dessine une checklist blanche sur fond vert arrondi, via supersampling.
+// Sac de courses (dégradé vert + coche) sur fond noir arrondi, via supersampling.
 const zlib = require('zlib');
 const fs = require('fs');
 const path = require('path');
 
-// --- géométrie (coordonnées normalisées 0..1) ---
-const ACCENT = [34, 197, 94];   // #22c55e
+// --- palette ---
+const BG = [13, 13, 15];          // noir épuré #0d0d0f
+const GREEN_TOP = [74, 222, 128]; // #4ade80
+const GREEN_BOT = [22, 163, 74];  // #16a34a
+const GREEN_MID = [34, 197, 94];  // #22c55e
 const WHITE = [255, 255, 255];
+
+function lerp(a, b, t) { return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t]; }
 
 function roundedRectContains(px, py, x, y, w, h, r) {
   if (px < x || px > x + w || py < y || py > y + h) return false;
@@ -26,39 +31,45 @@ function capsuleContains(px, py, x1, y1, x2, y2, hw) {
   return dx * dx + dy * dy <= hw * hw;
 }
 
+// Anneau (demi-supérieur) : pour l'anse du sac.
+function archContains(px, py, cx, cy, ri, ro) {
+  if (py > cy) return false;
+  const d = Math.hypot(px - cx, py - cy);
+  return d >= ri && d <= ro;
+}
+
 // Composite la couleur d'un point (coordonnées 0..1). Renvoie [r,g,b,a].
-function sample(px, py, maskable) {
+function sample(px, py) {
   let col = [0, 0, 0, 0];
   const over = (c) => { col = [c[0], c[1], c[2], 1]; };
 
-  // fond arrondi (plein pour maskable, marge réduite sinon)
-  const pad = maskable ? 0 : 0.0;
-  const bg = { x: pad, y: pad, w: 1 - 2 * pad, h: 1 - 2 * pad, r: 0.22 };
-  if (roundedRectContains(px, py, bg.x, bg.y, bg.w, bg.h, bg.r)) over(ACCENT);
-  else return col;
+  // fond noir arrondi (iOS applique son propre masque)
+  if (!roundedRectContains(px, py, 0, 0, 1, 1, 0.225)) return col;
+  over(BG);
 
-  // pour maskable on garde le motif dans la zone safe (centre ~80%)
-  const rows = [0.34, 0.5, 0.66];
-  for (const cy of rows) {
-    const boxSize = 0.135;
-    const bx = 0.215, by = cy - boxSize / 2;
-    // checkbox blanc
-    if (roundedRectContains(px, py, bx, by, boxSize, boxSize, 0.035)) over(WHITE);
-    // coche verte dans la box
-    const k = boxSize;
-    const p1 = [bx + 0.26 * k, by + 0.52 * k];
-    const p2 = [bx + 0.43 * k, by + 0.70 * k];
-    const p3 = [bx + 0.76 * k, by + 0.30 * k];
-    if (capsuleContains(px, py, p1[0], p1[1], p2[0], p2[1], 0.018) ||
-        capsuleContains(px, py, p2[0], p2[1], p3[0], p3[1], 0.018)) over(ACCENT);
-    // barre blanche
-    const barX = 0.40, barW = 0.345, barH = 0.072;
-    if (roundedRectContains(px, py, barX, cy - barH / 2, barW, barH, barH / 2)) over(WHITE);
+  // corps du sac (rectangle arrondi, coins hauts plus marqués)
+  const bx = 0.285, bw = 0.43, byTop = 0.43, bh = 0.37;
+  const inBody = roundedRectContains(px, py, bx, byTop, bw, bh, 0.085);
+
+  // anse : demi-anneau au-dessus du corps (dessinée avant le corps)
+  if (archContains(px, py, 0.5, 0.455, 0.115, 0.155)) over(GREEN_MID);
+
+  // corps avec dégradé vertical
+  if (inBody) {
+    const t = Math.min(1, Math.max(0, (py - byTop) / bh));
+    over(lerp(GREEN_TOP, GREEN_BOT, t));
+
+    // coche blanche centrée sur le sac
+    const p1 = [0.40, 0.615];
+    const p2 = [0.468, 0.685];
+    const p3 = [0.62, 0.535];
+    if (capsuleContains(px, py, p1[0], p1[1], p2[0], p2[1], 0.026) ||
+        capsuleContains(px, py, p2[0], p2[1], p3[0], p3[1], 0.026)) over(WHITE);
   }
   return col;
 }
 
-function render(size, maskable) {
+function render(size) {
   const SS = 4; // supersampling
   const buf = Buffer.alloc(size * size * 4);
   for (let y = 0; y < size; y++) {
@@ -68,7 +79,7 @@ function render(size, maskable) {
         for (let sx = 0; sx < SS; sx++) {
           const px = (x + (sx + 0.5) / SS) / size;
           const py = (y + (sy + 0.5) / SS) / size;
-          const c = sample(px, py, maskable);
+          const c = sample(px, py);
           r += c[0] * c[3]; g += c[1] * c[3]; b += c[2] * c[3]; a += c[3];
         }
       }
@@ -123,14 +134,14 @@ function encodePNG(rgba, size) {
 
 const outDir = path.join(__dirname, '..', 'icons');
 const targets = [
-  { name: 'icon-192.png', size: 192, maskable: false },
-  { name: 'icon-512.png', size: 512, maskable: false },
-  { name: 'icon-maskable-512.png', size: 512, maskable: true },
-  { name: 'apple-touch-icon.png', size: 180, maskable: true },
-  { name: 'favicon-32.png', size: 32, maskable: false },
+  { name: 'icon-192.png', size: 192 },
+  { name: 'icon-512.png', size: 512 },
+  { name: 'icon-maskable-512.png', size: 512 },
+  { name: 'apple-touch-icon.png', size: 180 },
+  { name: 'favicon-32.png', size: 32 },
 ];
 for (const t of targets) {
-  const png = encodePNG(render(t.size, t.maskable), t.size);
+  const png = encodePNG(render(t.size), t.size);
   fs.writeFileSync(path.join(outDir, t.name), png);
   console.log('wrote', t.name, png.length, 'bytes');
 }

@@ -357,6 +357,18 @@ body {
 .wish-star.on { color: #f5b400; }
 .wish-star:active { transform: scale(.82); }
 
+/* Section "Acheté" discrète */
+.wish-done { margin-top: 8px; }
+.wish-done-toggle {
+  display: flex; align-items: center; justify-content: center; gap: 5px;
+  margin: 0 auto 10px; border: none; background: transparent; cursor: pointer;
+  color: var(--text-mute); font-size: 13px; font-weight: 600; padding: 6px 10px; border-radius: 999px;
+}
+.wish-done-toggle:active { background: var(--surface-2); }
+.wish-done-toggle svg { transition: transform .25s var(--spring); }
+.wish-done-toggle.open svg { transform: rotate(180deg); }
+.wish-done .card { opacity: .72; }
+
 /* Fiche d'édition d'une envie */
 .wish-edit { display: flex; flex-direction: column; gap: 13px; padding-top: 4px; }
 .field { display: flex; flex-direction: column; gap: 6px; flex: 1; }
@@ -408,6 +420,13 @@ body {
 .hadd:active { transform: scale(.86); }
 
 /* ===== Catégories ===== */
+.seg { display: flex; gap: 4px; background: var(--surface-2); border-radius: 13px; padding: 4px; margin: 2px 0 14px; }
+.seg-btn {
+  flex: 1; border: none; background: transparent; color: var(--text-soft);
+  padding: 9px; font-size: 14px; font-weight: 700; border-radius: 10px; cursor: pointer;
+  transition: background .18s, color .18s, box-shadow .18s;
+}
+.seg-btn.active { background: var(--surface); color: var(--text); box-shadow: var(--shadow-sm); }
 .add-cat-form { display: flex; gap: 9px; margin: 2px 0 16px; }
 .cat-input {
   flex: 1; border: 1px solid var(--border-strong); border-radius: var(--radius);

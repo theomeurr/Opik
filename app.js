@@ -19,7 +19,7 @@
     '#22c55e', '#3b82f6', '#f59e0b', '#ef4444', '#a855f7', '#ec4899',
     '#14b8a6', '#f97316', '#0ea5e9', '#84cc16', '#eab308', '#64748b',
   ];
-  const WISH_CATEGORIES = [
+  const WISH_DEFAULTS = [
     { id: 'tech', name: 'Tech', color: '#3b82f6' },
     { id: 'mode', name: 'Mode', color: '#ec4899' },
     { id: 'maison', name: 'Maison', color: '#f59e0b' },
@@ -28,7 +28,10 @@
     { id: 'voyage', name: 'Voyage', color: '#14b8a6' },
     { id: 'autres', name: 'Autres', color: '#64748b' },
   ];
-  function wishCat(id) { return WISH_CATEGORIES.find((c) => c.id === id) || WISH_CATEGORIES[WISH_CATEGORIES.length - 1]; }
+  function wishCat(id) {
+    const arr = state.wishCategories;
+    return arr.find((c) => c.id === id) || arr[arr.length - 1];
+  }
 
   // ===== Utilitaires semaine =====
   function mondayOf(d) {
@@ -89,6 +92,7 @@
       lists: { [wk]: {} },
       currentWeek: wk,
       wishlist: [],
+      wishCategories: WISH_DEFAULTS.map((c) => ({ ...c })),
     };
   }
 
@@ -99,6 +103,12 @@
     s.items.forEach((it, i) => { if (typeof it.order !== 'number') it.order = i + 1; });
     // favoris
     s.items.forEach((it) => { if (typeof it.fav !== 'boolean') it.fav = false; });
+    // catégories d'envies
+    if (!Array.isArray(s.wishCategories) || s.wishCategories.length === 0) {
+      s.wishCategories = WISH_DEFAULTS.map((c) => ({ ...c }));
+    }
+    s.wishCategories.forEach((c, i) => { if (!c.color) c.color = PALETTE[i % PALETTE.length]; });
+    const wcIds = s.wishCategories.map((c) => c.id);
     // wishlist
     if (!Array.isArray(s.wishlist)) s.wishlist = [];
     s.wishlist.forEach((w, i) => {
@@ -106,7 +116,7 @@
       if (typeof w.done !== 'boolean') w.done = false;
       if (typeof w.prio !== 'boolean') w.prio = false;
       if (typeof w.url !== 'string') w.url = '';
-      if (!w.cat || !WISH_CATEGORIES.some((c) => c.id === w.cat)) w.cat = 'autres';
+      if (!w.cat || !wcIds.includes(w.cat)) w.cat = wcIds[wcIds.length - 1];
       w.price = (w.price == null || w.price === '') ? null : (Number(w.price) || null);
     });
     // valeurs de liste -> objets { c: coché, q: quantité }
@@ -462,8 +472,8 @@
   }
   function commitCatOrder(container) {
     const ids = [...container.querySelectorAll('.cat-item')].map((el) => el.dataset.id);
-    state.categories.sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id));
-    renderCategoryOptions();
+    activeCats().sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id));
+    if (catScope === 'courses') renderCategoryOptions();
   }
 
   // ===== Vue Historique =====
@@ -560,6 +570,8 @@
     return n.toLocaleString('fr-FR', { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 }) + ' €';
   }
 
+  let wishDoneOpen = false;
+
   function renderWishlist() {
     const list = state.wishlist.slice();
     viewWish.innerHTML = '';
@@ -572,6 +584,7 @@
     }
 
     const remaining = list.filter((w) => !w.done);
+    const done = list.filter((w) => w.done);
     const total = remaining.reduce((s, w) => s + (w.price || 0), 0);
     const summary = document.createElement('div');
     summary.className = 'wish-summary';
@@ -580,11 +593,11 @@
       ${total > 0 ? `<span class="wish-summary-total">${fmtPrice(total)}</span>` : ''}`;
     viewWish.appendChild(summary);
 
-    // Groupé par catégorie d'envie
-    WISH_CATEGORIES.forEach((cat) => {
-      const items = list.filter((w) => w.cat === cat.id);
+    // Groupé par catégorie d'envie (envies non achetées)
+    state.wishCategories.forEach((cat) => {
+      const items = remaining.filter((w) => w.cat === cat.id);
       if (items.length === 0) return;
-      items.sort((a, b) => (a.done - b.done) || (b.prio - a.prio) || ((a.order || 0) - (b.order || 0)));
+      items.sort((a, b) => (b.prio - a.prio) || ((a.order || 0) - (b.order || 0)));
       const group = document.createElement('div');
       group.className = 'cat-group';
       group.innerHTML = `<div class="cat-group-title"><span class="cat-dot" style="background:${cat.color}"></span>${escapeHtml(cat.name)}</div>`;
@@ -594,6 +607,24 @@
       group.appendChild(card);
       viewWish.appendChild(group);
     });
+
+    // Section "Acheté" discrète et repliable
+    if (done.length) {
+      const wrap = document.createElement('div');
+      wrap.className = 'wish-done';
+      const toggle = document.createElement('button');
+      toggle.className = 'wish-done-toggle' + (wishDoneOpen ? ' open' : '');
+      toggle.innerHTML = `<span>Acheté · ${done.length}</span><svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M7 10l5 5 5-5z"/></svg>`;
+      toggle.addEventListener('click', () => { wishDoneOpen = !wishDoneOpen; renderWishlist(); });
+      wrap.appendChild(toggle);
+      if (wishDoneOpen) {
+        const card = document.createElement('div');
+        card.className = 'card';
+        done.sort((a, b) => (a.order || 0) - (b.order || 0)).forEach((w) => card.appendChild(wishRow(w)));
+        wrap.appendChild(card);
+      }
+      viewWish.appendChild(wrap);
+    }
   }
 
   function urlHost(u) {
@@ -649,16 +680,20 @@
   const weDelete = $('#weDelete');
   let editingWishId = null;
 
-  WISH_CATEGORIES.forEach((c) => {
-    const opt = document.createElement('option');
-    opt.value = c.id; opt.textContent = c.name;
-    weCat.appendChild(opt);
-  });
+  function populateWeCat() {
+    weCat.innerHTML = '';
+    state.wishCategories.forEach((c) => {
+      const opt = document.createElement('option');
+      opt.value = c.id; opt.textContent = c.name;
+      weCat.appendChild(opt);
+    });
+  }
 
   function openWishEdit(id) {
     const w = wishById(id);
     if (!w) return;
     editingWishId = id;
+    populateWeCat();
     weName.value = w.name;
     wePrice.value = w.price != null ? w.price : '';
     weCat.value = w.cat;
@@ -699,9 +734,13 @@
   const addCatForm = $('#addCatForm');
   const newCatInput = $('#newCatInput');
 
+  let catScope = 'courses';
+  function activeCats() { return catScope === 'courses' ? state.categories : state.wishCategories; }
+  function afterCatChange() { save(); if (catScope === 'courses') refreshAll(); }
+
   function renderCatList() {
     catList.innerHTML = '';
-    state.categories.forEach((c) => {
+    activeCats().forEach((c) => {
       const li = document.createElement('li');
       li.className = 'cat-item';
       li.dataset.id = c.id;
@@ -726,7 +765,7 @@
       input.className = 'cat-name'; input.value = c.name;
       input.addEventListener('change', () => {
         const v = input.value.trim();
-        if (v) { c.name = v; save(); refreshAll(); } else { input.value = c.name; }
+        if (v) { c.name = v; afterCatChange(); } else { input.value = c.name; }
       });
 
       const del = document.createElement('button');
@@ -742,12 +781,12 @@
         s.style.background = col;
         s.setAttribute('aria-label', 'Couleur');
         s.addEventListener('click', () => {
-          c.color = col; save();
+          c.color = col;
           dotBtn.firstElementChild.style.background = col;
           colors.querySelectorAll('.swatch').forEach((sw) => sw.classList.remove('sel'));
           s.classList.add('sel');
           li.classList.remove('open');
-          refreshAll();
+          afterCatChange();
         });
         colors.appendChild(s);
       });
@@ -758,12 +797,19 @@
   }
 
   function removeCat(id) {
-    if (state.categories.length <= 1) { showToast('Gardez au moins une catégorie.', null); return; }
-    const target = fallbackCatId() === id ? state.categories.find((c) => c.id !== id).id : fallbackCatId();
-    const name = catName(id);
+    const cats = activeCats();
+    if (cats.length <= 1) { showToast('Gardez au moins une catégorie.', null); return; }
+    const target = (cats.find((c) => c.id !== id) || {}).id;
+    const name = (cats.find((c) => c.id === id) || {}).name || '';
+    const scope = catScope;
     deleteWithUndo(`Catégorie « ${name} » supprimée`, () => {
-      state.items.forEach((it) => { if (it.categoryId === id) it.categoryId = target; });
-      state.categories = state.categories.filter((c) => c.id !== id);
+      if (scope === 'courses') {
+        state.items.forEach((it) => { if (it.categoryId === id) it.categoryId = target; });
+        state.categories = state.categories.filter((c) => c.id !== id);
+      } else {
+        state.wishlist.forEach((w) => { if (w.cat === id) w.cat = target; });
+        state.wishCategories = state.wishCategories.filter((c) => c.id !== id);
+      }
     });
   }
 
@@ -771,10 +817,19 @@
     e.preventDefault();
     const v = newCatInput.value.trim();
     if (!v) return;
-    state.categories.push({ id: uid(), name: v, color: PALETTE[state.categories.length % PALETTE.length] });
+    const cats = activeCats();
+    cats.push({ id: uid(), name: v, color: PALETTE[cats.length % PALETTE.length] });
     newCatInput.value = '';
-    save(); refreshAll(); renderCatList();
+    afterCatChange(); renderCatList();
   });
+
+  const catSeg = $('#catSeg');
+  catSeg.querySelectorAll('.seg-btn').forEach((b) => b.addEventListener('click', () => {
+    catScope = b.dataset.scope;
+    catSeg.querySelectorAll('.seg-btn').forEach((x) => x.classList.toggle('active', x === b));
+    newCatInput.placeholder = catScope === 'courses' ? 'Nouvelle catégorie…' : "Nouvelle catégorie d'envie…";
+    renderCatList();
+  }));
 
   // ===== Menu Semaine =====
   const weekBtn = $('#weekBtn');

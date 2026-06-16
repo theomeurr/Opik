@@ -133,6 +133,11 @@
   }
   function isOnList(id) { return id in currentList(); }
   function isChecked(id) { return currentList()[id] === true; }
+  function weeksWithItems(excludeKey) {
+    return Object.keys(state.lists)
+      .filter((k) => k !== excludeKey && listCount(k) > 0)
+      .sort((a, b) => mondayFromKey(b) - mondayFromKey(a)); // plus récentes d'abord
+  }
 
   // ===== Actions =====
   function addItem(name, categoryId) {
@@ -174,6 +179,15 @@
   function setItemCategory(id, categoryId) {
     const it = itemById(id);
     if (it) { it.categoryId = categoryId; save(); }
+  }
+  function copyFromWeek(srcKey) {
+    const src = state.lists[srcKey];
+    if (!src) return;
+    const dest = currentList();
+    Object.keys(src).forEach((id) => {
+      if (itemById(id) && !(id in dest)) dest[id] = false; // ajouté, non coché
+    });
+    save();
   }
 
   // ===== DOM =====
@@ -220,6 +234,7 @@
         <div class="empty"><span class="emoji">🛒</span>
         Liste vide pour <b>${escapeHtml(relLabel(state.currentWeek).toLowerCase())}</b>.<br />
         Ajoutez un article ci-dessus.</div>`;
+      appendCopyBar();
       updateBadge();
       return;
     }
@@ -263,7 +278,20 @@
       bar.appendChild(btn);
       viewListe.appendChild(bar);
     }
+    appendCopyBar();
     updateBadge();
+  }
+
+  function appendCopyBar() {
+    if (weeksWithItems(state.currentWeek).length === 0) return;
+    const bar = document.createElement('div');
+    bar.className = 'copy-bar';
+    const btn = document.createElement('button');
+    btn.className = 'copy-btn';
+    btn.innerHTML = `<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M16 1H4a2 2 0 0 0-2 2v12h2V3h12V1Zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2Zm0 16H8V7h11v14Z"/></svg> Copier une autre semaine`;
+    btn.addEventListener('click', openCopySheet);
+    bar.appendChild(btn);
+    viewListe.appendChild(bar);
   }
 
   function itemRow(it) {
@@ -472,6 +500,46 @@
   });
   weekBackdrop.addEventListener('click', closeWeekMenu);
 
+  // ===== Feuille : copier une autre semaine =====
+  const copySheet = $('#copySheet');
+  const copyBackdrop = $('#copyBackdrop');
+  const copyList = $('#copyList');
+  const copyTargetLabel = $('#copyTargetLabel');
+
+  function openCopySheet() {
+    copyTargetLabel.textContent = relLabel(state.currentWeek).toLowerCase();
+    copyList.innerHTML = '';
+    const weeks = weeksWithItems(state.currentWeek);
+    if (weeks.length === 0) {
+      copyList.innerHTML = `<div class="sheet-empty">Aucune autre semaine avec des articles.</div>`;
+    } else {
+      weeks.forEach((key) => {
+        const btn = document.createElement('button');
+        btn.className = 'week-row';
+        btn.setAttribute('role', 'menuitem');
+        btn.innerHTML = `
+          <div class="week-row-main">
+            <div class="week-row-label">${escapeHtml(relLabel(key))}</div>
+            <div class="week-row-range">${escapeHtml(rangeLabel(key))}</div>
+          </div>
+          <span class="week-row-count">${listCount(key)}</span>`;
+        btn.addEventListener('click', () => {
+          copyFromWeek(key);
+          closeCopySheet();
+          renderListe();
+        });
+        copyList.appendChild(btn);
+      });
+    }
+    copySheet.classList.remove('hidden');
+    copyBackdrop.classList.remove('hidden');
+  }
+  function closeCopySheet() {
+    copySheet.classList.add('hidden');
+    copyBackdrop.classList.add('hidden');
+  }
+  copyBackdrop.addEventListener('click', closeCopySheet);
+
   // ===== Navigation =====
   const TABS = ['liste', 'historique', 'categories'];
   const TITLES = { liste: 'Liste', historique: 'Historique', categories: 'Catégories' };
@@ -487,6 +555,7 @@
     const dir = to > from ? 'from-right' : 'from-left';
     currentTab = tab;
     closeWeekMenu();
+    closeCopySheet();
 
     indicator.style.setProperty('--i', to);
     tabBtns.forEach((b) => b.classList.toggle('active', b.dataset.tab === tab));

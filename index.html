@@ -121,6 +121,26 @@
     <div id="copyList" class="week-menu-list"></div>
   </div>
 
+  <!-- Fiche d'édition d'une envie -->
+  <div id="wishBackdrop" class="sheet-backdrop hidden"></div>
+  <div id="wishSheet" class="sheet hidden" role="dialog" aria-modal="true" aria-label="Modifier l'envie">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">Modifier l'envie</div>
+    <form id="wishEditForm" class="wish-edit">
+      <label class="field"><span>Nom</span><input id="weName" type="text" required /></label>
+      <div class="field-row">
+        <label class="field"><span>Prix (€)</span><input id="wePrice" type="number" step="0.01" min="0" inputmode="decimal" placeholder="—" /></label>
+        <label class="field"><span>Catégorie</span><select id="weCat"></select></label>
+      </div>
+      <label class="field"><span>Lien</span><input id="weUrl" type="url" inputmode="url" placeholder="https://…" /></label>
+      <button type="button" id="wePrio" class="we-prio">⭐ Coup de cœur</button>
+      <div class="wish-edit-actions">
+        <button type="button" id="weDelete" class="we-delete">Supprimer</button>
+        <button type="submit" class="we-save">Enregistrer</button>
+      </div>
+    </form>
+  </div>
+
   <!-- Toast "Annuler" -->
   <div id="toast" class="toast hidden" role="status" aria-live="polite">
     <span id="toastMsg" class="toast-msg"></span>

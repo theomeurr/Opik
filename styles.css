@@ -330,13 +330,60 @@ body {
 }
 .wish-summary-label { font-size: 14px; font-weight: 600; color: var(--text-soft); }
 .wish-summary-total { font-size: 22px; font-weight: 800; letter-spacing: -.02em; color: var(--wish-strong); }
+.wish-item { align-items: center; }
 .wish-item .check { border-color: #e6b9d2; }
 .wish-item.checked .check { background: var(--wish); border-color: var(--wish); }
-.wish-price {
-  flex-shrink: 0; font-size: 14px; font-weight: 700; color: var(--wish-strong);
-  background: var(--wish-soft); padding: 4px 9px; border-radius: 10px;
+.wish-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.wish-name { font-size: 16px; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wish-item.checked .wish-name { color: var(--text-mute); text-decoration: line-through; }
+.wish-prio-star { color: #f5b400; margin-right: 4px; }
+.wish-sub { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.wish-link {
+  display: inline-flex; align-items: center; gap: 4px; max-width: 170px;
+  font-size: 12.5px; font-weight: 600; color: var(--wish-strong); text-decoration: none;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.wish-item.checked .wish-price { opacity: .5; }
+.wish-link:active { opacity: .6; }
+.wish-price {
+  flex-shrink: 0; font-size: 13px; font-weight: 700; color: var(--wish-strong);
+  background: var(--wish-soft); padding: 3px 8px; border-radius: 9px;
+}
+.wish-item.checked .wish-price, .wish-item.checked .wish-sub { opacity: .5; }
+.wish-star {
+  border: none; background: transparent; cursor: pointer; flex-shrink: 0;
+  width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center;
+  color: #d3d5db; font-size: 18px; transition: transform .15s var(--spring), color .15s;
+}
+.wish-star.on { color: #f5b400; }
+.wish-star:active { transform: scale(.82); }
+
+/* Fiche d'édition d'une envie */
+.wish-edit { display: flex; flex-direction: column; gap: 13px; padding-top: 4px; }
+.field { display: flex; flex-direction: column; gap: 6px; flex: 1; }
+.field > span { font-size: 12.5px; font-weight: 700; color: var(--text-soft); padding-left: 2px; }
+.field input, .field select {
+  border: 1px solid var(--border-strong); background: var(--surface); border-radius: var(--radius-sm);
+  padding: 12px 13px; font-size: 16px; outline: none; color: var(--text); width: 100%;
+}
+.field input:focus, .field select:focus { border-color: var(--wish); box-shadow: 0 0 0 3px var(--wish-soft); }
+.field-row { display: flex; gap: 11px; }
+.we-prio {
+  border: 1.5px solid var(--border-strong); background: var(--surface); color: var(--text-soft);
+  padding: 12px; border-radius: var(--radius-sm); font-size: 15px; font-weight: 700; cursor: pointer;
+  transition: background .12s, border-color .12s, color .12s;
+}
+.we-prio.on { background: #fff7e0; border-color: #f5b400; color: #9a7400; }
+.wish-edit-actions { display: flex; gap: 11px; margin-top: 4px; }
+.we-delete {
+  flex: 1; border: 1px solid var(--border-strong); background: var(--surface); color: var(--danger);
+  padding: 14px; border-radius: var(--radius); font-size: 15px; font-weight: 700; cursor: pointer;
+}
+.we-save {
+  flex: 2; border: none; color: #fff; padding: 14px; border-radius: var(--radius);
+  font-size: 15px; font-weight: 800; cursor: pointer;
+  background: linear-gradient(180deg, var(--wish), var(--wish-strong));
+  box-shadow: 0 4px 12px rgba(236, 72, 153, .32);
+}
 
 /* ===== Historique ===== */
 .hrow { display: flex; align-items: center; gap: 10px; padding: 13px 14px; border-bottom: 1px solid var(--border); }

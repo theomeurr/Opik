@@ -19,6 +19,16 @@
     '#22c55e', '#3b82f6', '#f59e0b', '#ef4444', '#a855f7', '#ec4899',
     '#14b8a6', '#f97316', '#0ea5e9', '#84cc16', '#eab308', '#64748b',
   ];
+  const WISH_CATEGORIES = [
+    { id: 'tech', name: 'Tech', color: '#3b82f6' },
+    { id: 'mode', name: 'Mode', color: '#ec4899' },
+    { id: 'maison', name: 'Maison', color: '#f59e0b' },
+    { id: 'loisirs', name: 'Loisirs', color: '#22c55e' },
+    { id: 'beaute', name: 'Beauté', color: '#a855f7' },
+    { id: 'voyage', name: 'Voyage', color: '#14b8a6' },
+    { id: 'autres', name: 'Autres', color: '#64748b' },
+  ];
+  function wishCat(id) { return WISH_CATEGORIES.find((c) => c.id === id) || WISH_CATEGORIES[WISH_CATEGORIES.length - 1]; }
 
   // ===== Utilitaires semaine =====
   function mondayOf(d) {
@@ -94,6 +104,9 @@
     s.wishlist.forEach((w, i) => {
       if (typeof w.order !== 'number') w.order = i + 1;
       if (typeof w.done !== 'boolean') w.done = false;
+      if (typeof w.prio !== 'boolean') w.prio = false;
+      if (typeof w.url !== 'string') w.url = '';
+      if (!w.cat || !WISH_CATEGORIES.some((c) => c.id === w.cat)) w.cat = 'autres';
       w.price = (w.price == null || w.price === '') ? null : (Number(w.price) || null);
     });
     // valeurs de liste -> objets { c: coché, q: quantité }
@@ -201,17 +214,30 @@
   }
   function setItemCategory(id, categoryId) { const it = itemById(id); if (it) { it.categoryId = categoryId; save(); } }
   function toggleFav(id) { const it = itemById(id); if (it) { it.fav = !it.fav; save(); } }
+  function clearHistory() {
+    state.items = [];
+    Object.keys(state.lists).forEach((k) => { state.lists[k] = {}; });
+    save();
+  }
 
   // Wishlist
+  function parsePrice(price) {
+    return price != null && String(price).trim() !== '' ? (Number(String(price).replace(',', '.')) || null) : null;
+  }
+  function wishById(id) { return state.wishlist.find((x) => x.id === id); }
   function addWish(name, price) {
     const clean = name.trim();
     if (!clean) return;
-    const p = price != null && String(price).trim() !== '' ? (Number(String(price).replace(',', '.')) || null) : null;
     const ord = state.wishlist.reduce((mx, w) => Math.max(mx, w.order || 0), 0) + 1;
-    state.wishlist.push({ id: uid(), name: clean, price: p, done: false, order: ord, createdAt: Date.now() });
+    state.wishlist.push({
+      id: uid(), name: clean, price: parsePrice(price), url: '', cat: 'autres',
+      prio: false, done: false, order: ord, createdAt: Date.now(),
+    });
     save();
   }
-  function toggleWishDone(id) { const w = state.wishlist.find((x) => x.id === id); if (w) { w.done = !w.done; save(); } }
+  function toggleWishDone(id) { const w = wishById(id); if (w) { w.done = !w.done; save(); } }
+  function toggleWishPrio(id) { const w = wishById(id); if (w) { w.prio = !w.prio; save(); } }
+  function updateWish(id, fields) { const w = wishById(id); if (w) { Object.assign(w, fields); save(); } }
   function removeWish(id) { state.wishlist = state.wishlist.filter((x) => x.id !== id); save(); }
   function commitWishOrder(container) {
     [...container.querySelectorAll('.wish-item')].forEach((el, i) => {
@@ -482,6 +508,18 @@
       group.appendChild(card);
       histList.appendChild(group);
     });
+
+    // Vider l'historique
+    const clearBar = document.createElement('div');
+    clearBar.className = 'clear-bar';
+    const cbtn = document.createElement('button');
+    cbtn.className = 'clear-btn';
+    cbtn.textContent = "Vider l'historique";
+    cbtn.addEventListener('click', () => {
+      deleteWithUndo('Historique vidé', clearHistory, renderHistorique);
+    });
+    clearBar.appendChild(cbtn);
+    histList.appendChild(clearBar);
   }
 
   function histRow(it) {
@@ -542,37 +580,119 @@
       ${total > 0 ? `<span class="wish-summary-total">${fmtPrice(total)}</span>` : ''}`;
     viewWish.appendChild(summary);
 
-    list.sort((a, b) => (a.done - b.done) || ((a.order || 0) - (b.order || 0)));
-    const card = document.createElement('div');
-    card.className = 'card';
-    list.forEach((w) => card.appendChild(wishRow(w)));
-    viewWish.appendChild(card);
+    // Groupé par catégorie d'envie
+    WISH_CATEGORIES.forEach((cat) => {
+      const items = list.filter((w) => w.cat === cat.id);
+      if (items.length === 0) return;
+      items.sort((a, b) => (a.done - b.done) || (b.prio - a.prio) || ((a.order || 0) - (b.order || 0)));
+      const group = document.createElement('div');
+      group.className = 'cat-group';
+      group.innerHTML = `<div class="cat-group-title"><span class="cat-dot" style="background:${cat.color}"></span>${escapeHtml(cat.name)}</div>`;
+      const card = document.createElement('div');
+      card.className = 'card';
+      items.forEach((w) => card.appendChild(wishRow(w)));
+      group.appendChild(card);
+      viewWish.appendChild(group);
+    });
+  }
+
+  function urlHost(u) {
+    try { return new URL(u).hostname.replace(/^www\./, ''); } catch (e) { return 'lien'; }
   }
 
   function wishRow(w) {
     const row = document.createElement('div');
     row.className = 'item wish-item' + (w.done ? ' checked' : '');
     row.dataset.id = w.id;
+    const sub = w.url
+      ? `<div class="wish-sub"><a class="wish-link" href="${escapeHtml(w.url)}" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" width="13" height="13"><path fill="currentColor" d="M3.9 12a3.1 3.1 0 0 1 3.1-3.1h4V7h-4a5 5 0 0 0 0 10h4v-1.9h-4A3.1 3.1 0 0 1 3.9 12Zm4.1 1h8v-2H8v2Zm9-6h-4v1.9h4a3.1 3.1 0 0 1 0 6.2h-4V17h4a5 5 0 0 0 0-10Z"/></svg>${escapeHtml(urlHost(w.url))}</a></div>`
+      : '';
     row.innerHTML = `
       <span class="check"><svg viewBox="0 0 24 24" width="15" height="15"><path fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" d="M5 12.5l4 4 10-10"/></svg></span>
-      <span class="item-name">${escapeHtml(w.name)}</span>
+      <div class="wish-main">
+        <div class="wish-name">${w.prio ? '<span class="wish-prio-star">★</span>' : ''}${escapeHtml(w.name)}</div>
+        ${sub}
+      </div>
       ${w.price != null ? `<span class="wish-price">${fmtPrice(w.price)}</span>` : ''}
-      <span class="drag-handle" aria-label="Déplacer"><svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M4 7h16v2H4V7Zm0 4h16v2H4v-2Zm0 4h16v2H4v-2Z"/></svg></span>
-      <button class="item-del" aria-label="Retirer">×</button>`;
-    row.addEventListener('click', (e) => {
-      if (e.target.closest('.item-del, .drag-handle')) return;
+      <button class="wish-star${w.prio ? ' on' : ''}" aria-label="Coup de cœur">★</button>
+      <span class="drag-handle" aria-label="Déplacer"><svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M4 7h16v2H4V7Zm0 4h16v2H4v-2Zm0 4h16v2H4v-2Z"/></svg></span>`;
+
+    // tap zone check -> fait/pas fait
+    row.querySelector('.check').addEventListener('click', (e) => {
+      e.stopPropagation();
       if (Date.now() - lastDragEnd < 250) return;
       toggleWishDone(w.id); renderWishlist();
     });
-    row.querySelector('.item-del').addEventListener('click', (e) => {
-      e.stopPropagation();
-      deleteWithUndo(`« ${w.name} » retiré`, () => removeWish(w.id), renderWishlist);
+    // tap sur le contenu -> édition
+    row.querySelector('.wish-main').addEventListener('click', (e) => {
+      if (e.target.closest('.wish-link')) return;
+      openWishEdit(w.id);
+    });
+    row.querySelector('.wish-star').addEventListener('click', (e) => {
+      e.stopPropagation(); toggleWishPrio(w.id); renderWishlist();
     });
     const handle = row.querySelector('.drag-handle');
     handle.addEventListener('pointerdown', (e) => startDrag(e, row, row.parentElement, '.wish-item', commitWishOrder));
     handle.addEventListener('click', (e) => e.stopPropagation());
     return row;
   }
+
+  // ===== Fiche d'édition d'une envie =====
+  const wishSheet = $('#wishSheet');
+  const wishBackdrop = $('#wishBackdrop');
+  const wishEditForm = $('#wishEditForm');
+  const weName = $('#weName');
+  const wePrice = $('#wePrice');
+  const weCat = $('#weCat');
+  const weUrl = $('#weUrl');
+  const wePrio = $('#wePrio');
+  const weDelete = $('#weDelete');
+  let editingWishId = null;
+
+  WISH_CATEGORIES.forEach((c) => {
+    const opt = document.createElement('option');
+    opt.value = c.id; opt.textContent = c.name;
+    weCat.appendChild(opt);
+  });
+
+  function openWishEdit(id) {
+    const w = wishById(id);
+    if (!w) return;
+    editingWishId = id;
+    weName.value = w.name;
+    wePrice.value = w.price != null ? w.price : '';
+    weCat.value = w.cat;
+    weUrl.value = w.url || '';
+    wePrio.classList.toggle('on', w.prio);
+    wishSheet.classList.remove('hidden');
+    wishBackdrop.classList.remove('hidden');
+  }
+  function closeWishEdit() {
+    wishSheet.classList.add('hidden');
+    wishBackdrop.classList.add('hidden');
+    editingWishId = null;
+  }
+  wePrio.addEventListener('click', () => wePrio.classList.toggle('on'));
+  wishEditForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    if (!editingWishId) return;
+    const name = weName.value.trim();
+    if (!name) return;
+    let url = weUrl.value.trim();
+    if (url && !/^https?:\/\//i.test(url)) url = 'https://' + url;
+    updateWish(editingWishId, {
+      name, price: parsePrice(wePrice.value), cat: weCat.value, url, prio: wePrio.classList.contains('on'),
+    });
+    closeWishEdit();
+    renderWishlist();
+  });
+  weDelete.addEventListener('click', () => {
+    if (!editingWishId) return;
+    const id = editingWishId, name = wishById(id)?.name || '';
+    closeWishEdit();
+    deleteWithUndo(`« ${name} » retiré`, () => removeWish(id), renderWishlist);
+  });
+  wishBackdrop.addEventListener('click', closeWishEdit);
 
   // ===== Vue Catégories =====
   const catList = $('#catList');
@@ -772,6 +892,7 @@
     currentTab = tab;
     closeWeekMenu();
     closeCopySheet();
+    closeWishEdit();
 
     indicator.style.setProperty('--i', to);
     tabBtns.forEach((b) => b.classList.toggle('active', b.dataset.tab === tab));

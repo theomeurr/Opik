@@ -37,15 +37,27 @@
       <button type="submit" class="add-btn" aria-label="Ajouter">+</button>
     </form>
 
+    <form id="wishForm" class="add-bar hidden" autocomplete="off">
+      <input id="wishInput" class="add-input" type="text" placeholder="Une envie, un plaisir…" enterkeyhint="done" />
+      <input id="wishPrice" class="wish-price-input" type="number" inputmode="decimal" step="0.01" min="0" placeholder="€" aria-label="Prix (optionnel)" />
+      <button type="submit" class="add-btn wish-add" aria-label="Ajouter">+</button>
+    </form>
+
     <main class="content">
       <section id="view-liste" class="view"></section>
 
       <section id="view-historique" class="view hidden">
-        <div class="search-wrap">
-          <input id="searchInput" class="search-input" type="search" placeholder="Rechercher…" enterkeyhint="search" />
+        <div id="searchWrap" class="search-wrap">
+          <button id="searchToggle" class="search-toggle" aria-label="Rechercher">
+            <svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true"><path fill="currentColor" d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.7.7l.27.28v.79l5 4.99L20.49 19l-4.99-5Zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14Z"/></svg>
+          </button>
+          <input id="searchInput" class="search-input" type="search" placeholder="Rechercher un produit…" enterkeyhint="search" />
+          <button id="searchClear" class="search-clear" aria-label="Fermer la recherche">×</button>
         </div>
         <div id="historiqueList"></div>
       </section>
+
+      <section id="view-wishlist" class="view hidden"></section>
 
       <section id="view-categories" class="view hidden">
         <form id="addCatForm" class="add-cat-form">
@@ -82,6 +94,13 @@
           <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path fill="currentColor" d="M10.4 3a2 2 0 0 0-1.4.6l-6 6a2 2 0 0 0 0 2.8l6.6 6.6a2 2 0 0 0 2.8 0l6-6a2 2 0 0 0 .6-1.4V5a2 2 0 0 0-2-2h-6.6ZM16 6.2a1.3 1.3 0 1 1 0 2.6 1.3 1.3 0 0 1 0-2.6Z"/></svg>
         </span>
         <span class="tab-label">Catégories</span>
+      </button>
+
+      <button class="tab-item tab-wish" data-tab="wishlist" role="tab" aria-label="Wishlist">
+        <span class="tab-icon">
+          <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path fill="currentColor" d="M12 20.3l-1.45-1.32C5.4 14.24 2 11.16 2 7.5 2 4.5 4.42 2 7.5 2c1.74 0 3.41.81 4.5 2.09C13.09 2.81 14.76 2 16.5 2 19.58 2 22 4.5 22 7.5c0 3.66-3.4 6.74-8.55 11.49L12 20.3Z"/></svg>
+        </span>
+        <span class="tab-label">Wishlist</span>
       </button>
     </div>
   </nav>

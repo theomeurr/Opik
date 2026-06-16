@@ -12,6 +12,9 @@
   --accent: #22c55e;
   --accent-strong: #16a34a;
   --accent-soft: #e7f8ee;
+  --wish: #ec4899;
+  --wish-strong: #db2777;
+  --wish-soft: #fdeaf3;
   --danger: #ef4444;
   --radius-sm: 12px;
   --radius: 16px;
@@ -286,15 +289,54 @@ body {
 }
 .copy-btn:active { background: var(--accent-soft); border-color: var(--accent); }
 
-/* ===== Recherche ===== */
-.search-wrap { padding: 2px 0 14px; }
+/* ===== Recherche (repliable) ===== */
+.search-wrap { display: flex; align-items: center; gap: 9px; padding: 2px 0 14px; }
+.search-toggle {
+  width: 46px; height: 46px; flex-shrink: 0; border-radius: 50%;
+  border: 1px solid var(--border-strong); background: var(--surface);
+  color: var(--text-soft); display: grid; place-items: center; cursor: pointer;
+  box-shadow: var(--shadow-sm); transition: transform .12s var(--spring), color .15s;
+}
+.search-toggle:active { transform: scale(.92); }
+.search-wrap.open .search-toggle { color: var(--accent-strong); }
 .search-input {
-  width: 100%; border: 1px solid var(--border-strong); background: var(--surface);
+  flex: 1; min-width: 0; border: 1px solid var(--border-strong); background: var(--surface);
   border-radius: var(--radius); padding: 13px 15px; font-size: 16px; outline: none;
   box-shadow: var(--shadow-sm); transition: border-color .15s, box-shadow .15s;
 }
 .search-input::placeholder { color: var(--text-mute); }
 .search-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.search-clear {
+  flex-shrink: 0; width: 40px; height: 40px; border-radius: 50%; border: none;
+  background: var(--surface-2); color: var(--text-soft); font-size: 22px; line-height: 1; cursor: pointer;
+}
+.search-wrap:not(.open) .search-input,
+.search-wrap:not(.open) .search-clear { display: none; }
+
+/* ===== Wishlist ===== */
+.wish-price-input {
+  width: 74px; flex-shrink: 0; border: 1px solid var(--border-strong); background: var(--surface);
+  border-radius: var(--radius); padding: 13px 10px; font-size: 15px; outline: none; text-align: center;
+  box-shadow: var(--shadow-sm); transition: border-color .15s, box-shadow .15s;
+}
+.wish-price-input::placeholder { color: var(--text-mute); }
+.wish-price-input:focus { border-color: var(--wish); box-shadow: 0 0 0 3px var(--wish-soft); }
+.add-btn.wish-add { background: linear-gradient(180deg, var(--wish), var(--wish-strong)); box-shadow: 0 4px 12px rgba(236, 72, 153, .32); }
+.wish-summary {
+  display: flex; align-items: center; justify-content: space-between;
+  background: linear-gradient(135deg, #fff, var(--wish-soft));
+  border: 1px solid var(--border); border-radius: var(--radius);
+  box-shadow: var(--shadow-sm); padding: 14px 16px; margin: 4px 0 18px;
+}
+.wish-summary-label { font-size: 14px; font-weight: 600; color: var(--text-soft); }
+.wish-summary-total { font-size: 22px; font-weight: 800; letter-spacing: -.02em; color: var(--wish-strong); }
+.wish-item .check { border-color: #e6b9d2; }
+.wish-item.checked .check { background: var(--wish); border-color: var(--wish); }
+.wish-price {
+  flex-shrink: 0; font-size: 14px; font-weight: 700; color: var(--wish-strong);
+  background: var(--wish-soft); padding: 4px 9px; border-radius: 10px;
+}
+.wish-item.checked .wish-price { opacity: .5; }
 
 /* ===== Historique ===== */
 .hrow { display: flex; align-items: center; gap: 10px; padding: 13px 14px; border-bottom: 1px solid var(--border); }
@@ -356,13 +398,17 @@ body {
 }
 .tabbar-indicator {
   position: absolute; top: 6px; bottom: 6px; left: 6px;
-  width: calc((100% - 12px) / 3);
+  width: calc((100% - 12px) / 4);
   border-radius: 24px;
   background: #fff;
   box-shadow: 0 2px 8px rgba(16, 24, 40, .1);
   transform: translateX(calc(var(--i, 0) * 100%));
-  transition: transform .42s var(--spring);
+  transition: transform .42s var(--spring), background .3s;
 }
+.tabbar-inner.wish .tabbar-indicator { background: var(--wish-soft); }
+.tab-item.tab-wish.active { color: var(--wish-strong); }
+.tab-item.tab-wish .tab-icon { color: var(--wish); opacity: .55; transition: opacity .25s, transform .42s var(--spring); }
+.tab-item.tab-wish.active .tab-icon { opacity: 1; }
 .tab-item {
   position: relative; z-index: 1; flex: 1; border: none; background: transparent;
   cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px;
@@ -372,7 +418,8 @@ body {
 .tab-icon { position: relative; display: grid; place-items: center; transition: transform .42s var(--spring); }
 .tab-item.active .tab-icon { transform: translateY(-1px) scale(1.08); }
 .tab-item:active .tab-icon { transform: scale(.88); }
-.tab-label { font-size: 11px; font-weight: 700; letter-spacing: -.01em; }
+.tab-label { font-size: 10.5px; font-weight: 700; letter-spacing: -.02em; white-space: nowrap; }
+.tab-item { padding-left: 2px; padding-right: 2px; }
 .tab-badge {
   position: absolute; top: -5px; right: -10px; min-width: 18px; height: 18px; padding: 0 5px;
   border-radius: 9px; background: var(--accent); color: #fff; font-size: 11px; font-weight: 800;

@@ -78,6 +78,7 @@
       items: [],
       lists: { [wk]: {} },
       currentWeek: wk,
+      wishlist: [],
     };
   }
 
@@ -88,6 +89,13 @@
     s.items.forEach((it, i) => { if (typeof it.order !== 'number') it.order = i + 1; });
     // favoris
     s.items.forEach((it) => { if (typeof it.fav !== 'boolean') it.fav = false; });
+    // wishlist
+    if (!Array.isArray(s.wishlist)) s.wishlist = [];
+    s.wishlist.forEach((w, i) => {
+      if (typeof w.order !== 'number') w.order = i + 1;
+      if (typeof w.done !== 'boolean') w.done = false;
+      w.price = (w.price == null || w.price === '') ? null : (Number(w.price) || null);
+    });
     // valeurs de liste -> objets { c: coché, q: quantité }
     Object.values(s.lists).forEach((L) => {
       Object.keys(L).forEach((id) => {
@@ -193,6 +201,24 @@
   }
   function setItemCategory(id, categoryId) { const it = itemById(id); if (it) { it.categoryId = categoryId; save(); } }
   function toggleFav(id) { const it = itemById(id); if (it) { it.fav = !it.fav; save(); } }
+
+  // Wishlist
+  function addWish(name, price) {
+    const clean = name.trim();
+    if (!clean) return;
+    const p = price != null && String(price).trim() !== '' ? (Number(String(price).replace(',', '.')) || null) : null;
+    const ord = state.wishlist.reduce((mx, w) => Math.max(mx, w.order || 0), 0) + 1;
+    state.wishlist.push({ id: uid(), name: clean, price: p, done: false, order: ord, createdAt: Date.now() });
+    save();
+  }
+  function toggleWishDone(id) { const w = state.wishlist.find((x) => x.id === id); if (w) { w.done = !w.done; save(); } }
+  function removeWish(id) { state.wishlist = state.wishlist.filter((x) => x.id !== id); save(); }
+  function commitWishOrder(container) {
+    [...container.querySelectorAll('.wish-item')].forEach((el, i) => {
+      const w = state.wishlist.find((x) => x.id === el.dataset.id);
+      if (w) w.order = i + 1;
+    });
+  }
   function copyFromWeek(srcKey) {
     const src = state.lists[srcKey];
     if (!src) return;
@@ -211,10 +237,15 @@
   const viewListe = $('#view-liste');
   const viewHist = $('#view-historique');
   const viewCats = $('#view-categories');
+  const viewWish = $('#view-wishlist');
   const histList = $('#historiqueList');
   const searchInput = $('#searchInput');
   const listeBadge = $('#listeBadge');
   const pageTitle = $('#pageTitle');
+  const wishForm = $('#wishForm');
+  const wishInput = $('#wishInput');
+  const wishPrice = $('#wishPrice');
+  const tabbarInner = document.querySelector('.tabbar-inner');
 
   function renderCategoryOptions() {
     const prev = addCategory.value;
@@ -486,6 +517,63 @@
     return row;
   }
 
+  // ===== Vue Wishlist =====
+  function fmtPrice(n) {
+    return n.toLocaleString('fr-FR', { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 }) + ' €';
+  }
+
+  function renderWishlist() {
+    const list = state.wishlist.slice();
+    viewWish.innerHTML = '';
+
+    if (list.length === 0) {
+      viewWish.innerHTML = `
+        <div class="empty"><span class="emoji">💖</span>
+        Votre wishlist est vide.<br />Ajoutez une envie, un petit plaisir…</div>`;
+      return;
+    }
+
+    const remaining = list.filter((w) => !w.done);
+    const total = remaining.reduce((s, w) => s + (w.price || 0), 0);
+    const summary = document.createElement('div');
+    summary.className = 'wish-summary';
+    summary.innerHTML = `
+      <span class="wish-summary-label">${remaining.length} envie${remaining.length > 1 ? 's' : ''} à s'offrir</span>
+      ${total > 0 ? `<span class="wish-summary-total">${fmtPrice(total)}</span>` : ''}`;
+    viewWish.appendChild(summary);
+
+    list.sort((a, b) => (a.done - b.done) || ((a.order || 0) - (b.order || 0)));
+    const card = document.createElement('div');
+    card.className = 'card';
+    list.forEach((w) => card.appendChild(wishRow(w)));
+    viewWish.appendChild(card);
+  }
+
+  function wishRow(w) {
+    const row = document.createElement('div');
+    row.className = 'item wish-item' + (w.done ? ' checked' : '');
+    row.dataset.id = w.id;
+    row.innerHTML = `
+      <span class="check"><svg viewBox="0 0 24 24" width="15" height="15"><path fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" d="M5 12.5l4 4 10-10"/></svg></span>
+      <span class="item-name">${escapeHtml(w.name)}</span>
+      ${w.price != null ? `<span class="wish-price">${fmtPrice(w.price)}</span>` : ''}
+      <span class="drag-handle" aria-label="Déplacer"><svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M4 7h16v2H4V7Zm0 4h16v2H4v-2Zm0 4h16v2H4v-2Z"/></svg></span>
+      <button class="item-del" aria-label="Retirer">×</button>`;
+    row.addEventListener('click', (e) => {
+      if (e.target.closest('.item-del, .drag-handle')) return;
+      if (Date.now() - lastDragEnd < 250) return;
+      toggleWishDone(w.id); renderWishlist();
+    });
+    row.querySelector('.item-del').addEventListener('click', (e) => {
+      e.stopPropagation();
+      deleteWithUndo(`« ${w.name} » retiré`, () => removeWish(w.id), renderWishlist);
+    });
+    const handle = row.querySelector('.drag-handle');
+    handle.addEventListener('pointerdown', (e) => startDrag(e, row, row.parentElement, '.wish-item', commitWishOrder));
+    handle.addEventListener('click', (e) => e.stopPropagation());
+    return row;
+  }
+
   // ===== Vue Catégories =====
   const catList = $('#catList');
   const addCatForm = $('#addCatForm');
@@ -669,9 +757,9 @@
   copyBackdrop.addEventListener('click', closeCopySheet);
 
   // ===== Navigation =====
-  const TABS = ['liste', 'historique', 'categories'];
-  const TITLES = { liste: 'Liste', historique: 'Historique', categories: 'Catégories' };
-  const VIEWS = { liste: viewListe, historique: viewHist, categories: viewCats };
+  const TABS = ['liste', 'historique', 'categories', 'wishlist'];
+  const TITLES = { liste: 'Liste', historique: 'Historique', categories: 'Catégories', wishlist: 'Wishlist' };
+  const VIEWS = { liste: viewListe, historique: viewHist, categories: viewCats, wishlist: viewWish };
   const indicator = $('#tabIndicator');
   const tabBtns = Array.from(document.querySelectorAll('.tab-item'));
   let currentTab = 'liste';
@@ -690,11 +778,14 @@
 
     pageTitle.textContent = TITLES[tab];
     addForm.classList.toggle('hidden', tab !== 'liste');
+    wishForm.classList.toggle('hidden', tab !== 'wishlist');
     weekBtn.classList.toggle('hidden', tab !== 'liste');
+    tabbarInner.classList.toggle('wish', tab === 'wishlist');
 
     if (tab === 'liste') renderListe();
     else if (tab === 'historique') renderHistorique();
     else if (tab === 'categories') renderCatList();
+    else if (tab === 'wishlist') renderWishlist();
 
     TABS.forEach((t) => {
       const v = VIEWS[t];
@@ -720,6 +811,31 @@
   });
   searchInput.addEventListener('input', renderHistorique);
 
+  wishForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    addWish(wishInput.value, wishPrice.value);
+    wishInput.value = ''; wishPrice.value = ''; wishInput.focus();
+    renderWishlist();
+  });
+
+  // Recherche repliable (juste l'icône par défaut)
+  const searchWrap = $('#searchWrap');
+  const searchToggle = $('#searchToggle');
+  const searchClear = $('#searchClear');
+  searchToggle.addEventListener('click', () => {
+    const open = searchWrap.classList.toggle('open');
+    if (open) searchInput.focus();
+    else { searchInput.value = ''; renderHistorique(); }
+  });
+  searchClear.addEventListener('click', () => {
+    searchInput.value = '';
+    searchWrap.classList.remove('open');
+    renderHistorique();
+  });
+  searchInput.addEventListener('blur', () => {
+    if (!searchInput.value.trim()) searchWrap.classList.remove('open');
+  });
+
   // ===== Divers =====
   function escapeHtml(s) {
     return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -734,6 +850,7 @@
     renderWeekButton();
     if (currentTab === 'liste') renderListe();
     else if (currentTab === 'historique') renderHistorique();
+    else if (currentTab === 'wishlist') renderWishlist();
     else renderCatList();
     updateBadge();
   }

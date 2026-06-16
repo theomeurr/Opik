@@ -1,7 +1,8 @@
 (() => {
   'use strict';
 
-  const STORE_KEY = 'courses.v1';
+  const STORE_KEY = 'courses.v2';
+  const OLD_KEY = 'courses.v1';
 
   const DEFAULT_CATEGORIES = [
     'Fruits & Légumes',
@@ -15,10 +16,67 @@
     'Autres',
   ];
 
-  let state = load();
+  // ===== Utilitaires semaine =====
+  function mondayOf(d) {
+    const date = new Date(d);
+    date.setHours(0, 0, 0, 0);
+    const day = (date.getDay() + 6) % 7; // 0 = lundi
+    date.setDate(date.getDate() - day);
+    return date;
+  }
+  function weekKeyOf(monday) {
+    const y = monday.getFullYear();
+    const m = String(monday.getMonth() + 1).padStart(2, '0');
+    const dd = String(monday.getDate()).padStart(2, '0');
+    return `${y}-${m}-${dd}`;
+  }
+  function mondayFromKey(key) { return new Date(key + 'T00:00:00'); }
+  function thisWeekKey() { return weekKeyOf(mondayOf(new Date())); }
+  function weeksDiff(aKey, bKey) {
+    return Math.round((mondayFromKey(aKey) - mondayFromKey(bKey)) / (7 * 86400000));
+  }
+  const fmtDay = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short' });
+  function rangeLabel(key) {
+    const start = mondayFromKey(key);
+    const end = new Date(start); end.setDate(end.getDate() + 6);
+    if (start.getMonth() === end.getMonth()) {
+      return `${start.getDate()} – ${fmtDay.format(end)}`;
+    }
+    return `${fmtDay.format(start)} – ${fmtDay.format(end)}`;
+  }
+  function relLabel(key) {
+    const d = weeksDiff(key, thisWeekKey());
+    if (d === 0) return 'Cette semaine';
+    if (d === 1) return 'Semaine prochaine';
+    if (d === -1) return 'Semaine dernière';
+    if (d > 1) return `Dans ${d} semaines`;
+    return `Il y a ${-d} semaines`;
+  }
+  function shortLabel(key) {
+    const d = weeksDiff(key, thisWeekKey());
+    if (d === 0) return 'Cette semaine';
+    if (d === 1) return 'Sem. prochaine';
+    if (d === -1) return 'Sem. dernière';
+    const m = mondayFromKey(key);
+    return `Sem. du ${m.getDate()}/${String(m.getMonth() + 1).padStart(2, '0')}`;
+  }
 
   function uid() {
     return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  }
+
+  // ===== Chargement / migration =====
+  let state = load();
+
+  function freshState() {
+    const wk = thisWeekKey();
+    return {
+      version: 2,
+      categories: DEFAULT_CATEGORIES.map((name) => ({ id: uid(), name })),
+      items: [],            // catalogue (historique total)
+      lists: { [wk]: {} },  // { weekKey: { itemId: estCoché } }
+      currentWeek: wk,
+    };
   }
 
   function load() {
@@ -26,28 +84,99 @@
       const raw = localStorage.getItem(STORE_KEY);
       if (raw) {
         const data = JSON.parse(raw);
-        if (data && Array.isArray(data.categories) && Array.isArray(data.items)) return data;
+        if (data && Array.isArray(data.categories) && Array.isArray(data.items) && data.lists) {
+          if (!data.currentWeek) data.currentWeek = thisWeekKey();
+          if (!data.lists[data.currentWeek]) data.lists[data.currentWeek] = {};
+          return data;
+        }
+      }
+      // migration depuis l'ancienne version
+      const old = localStorage.getItem(OLD_KEY);
+      if (old) {
+        const o = JSON.parse(old);
+        if (o && Array.isArray(o.categories) && Array.isArray(o.items)) {
+          const wk = thisWeekKey();
+          const list = {};
+          const items = o.items.map((it) => {
+            if (it.onList) list[it.id] = !!it.checked;
+            return {
+              id: it.id, name: it.name, categoryId: it.categoryId,
+              createdAt: it.createdAt || Date.now(), lastUsed: it.lastUsed || Date.now(),
+            };
+          });
+          return { version: 2, categories: o.categories, items, lists: { [wk]: list }, currentWeek: wk };
+        }
       }
     } catch (e) { /* ignore */ }
-    return {
-      categories: DEFAULT_CATEGORIES.map((name) => ({ id: uid(), name })),
-      items: [],
-    };
+    return freshState();
   }
 
   function save() {
     try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) { /* ignore */ }
   }
 
+  // ===== Helpers données =====
   function fallbackCatId() {
     return state.categories[state.categories.length - 1]?.id || state.categories[0]?.id;
   }
-  function catName(id) {
-    return state.categories.find((c) => c.id === id)?.name || '—';
-  }
+  function catName(id) { return state.categories.find((c) => c.id === id)?.name || '—'; }
   function norm(s) { return s.trim().toLowerCase(); }
+  function itemById(id) { return state.items.find((i) => i.id === id); }
 
-  // --- DOM ---
+  function currentList() {
+    if (!state.lists[state.currentWeek]) state.lists[state.currentWeek] = {};
+    return state.lists[state.currentWeek];
+  }
+  function listCount(key) {
+    const L = state.lists[key];
+    return L ? Object.keys(L).length : 0;
+  }
+  function isOnList(id) { return id in currentList(); }
+  function isChecked(id) { return currentList()[id] === true; }
+
+  // ===== Actions =====
+  function addItem(name, categoryId) {
+    const clean = name.trim();
+    if (!clean) return;
+    let item = state.items.find((it) => norm(it.name) === norm(clean));
+    if (item) {
+      item.lastUsed = Date.now();
+      if (categoryId) item.categoryId = categoryId;
+    } else {
+      item = {
+        id: uid(), name: clean, categoryId: categoryId || fallbackCatId(),
+        createdAt: Date.now(), lastUsed: Date.now(),
+      };
+      state.items.push(item);
+    }
+    currentList()[item.id] = false;
+    save();
+  }
+  function toggleChecked(id) {
+    const L = currentList();
+    if (id in L) { L[id] = !L[id]; save(); }
+  }
+  function removeFromList(id) {
+    const L = currentList();
+    if (id in L) { delete L[id]; save(); }
+  }
+  function toggleOnList(id) {
+    const L = currentList();
+    if (id in L) { delete L[id]; }
+    else { L[id] = false; const it = itemById(id); if (it) it.lastUsed = Date.now(); }
+    save();
+  }
+  function clearChecked() {
+    const L = currentList();
+    Object.keys(L).forEach((id) => { if (L[id]) delete L[id]; });
+    save();
+  }
+  function setItemCategory(id, categoryId) {
+    const it = itemById(id);
+    if (it) { it.categoryId = categoryId; save(); }
+  }
+
+  // ===== DOM =====
   const $ = (sel) => document.querySelector(sel);
   const addForm = $('#addForm');
   const addInput = $('#addInput');
@@ -60,49 +189,7 @@
   const listeBadge = $('#listeBadge');
   const pageTitle = $('#pageTitle');
 
-  // --- Données ---
-  function addItem(name, categoryId) {
-    const clean = name.trim();
-    if (!clean) return;
-    const existing = state.items.find((it) => norm(it.name) === norm(clean));
-    if (existing) {
-      existing.onList = true;
-      existing.checked = false;
-      existing.lastUsed = Date.now();
-      if (categoryId) existing.categoryId = categoryId;
-    } else {
-      state.items.push({
-        id: uid(), name: clean, categoryId: categoryId || fallbackCatId(),
-        onList: true, checked: false, createdAt: Date.now(), lastUsed: Date.now(),
-      });
-    }
-    save();
-  }
-  function toggleChecked(id) {
-    const it = state.items.find((i) => i.id === id);
-    if (it) { it.checked = !it.checked; save(); }
-  }
-  function removeFromList(id) {
-    const it = state.items.find((i) => i.id === id);
-    if (it) { it.onList = false; it.checked = false; save(); }
-  }
-  function toggleOnList(id) {
-    const it = state.items.find((i) => i.id === id);
-    if (!it) return;
-    it.onList = !it.onList;
-    if (it.onList) { it.checked = false; it.lastUsed = Date.now(); }
-    save();
-  }
-  function clearChecked() {
-    state.items.forEach((it) => { if (it.checked) { it.onList = false; it.checked = false; } });
-    save();
-  }
-  function setItemCategory(id, categoryId) {
-    const it = state.items.find((i) => i.id === id);
-    if (it) { it.categoryId = categoryId; save(); }
-  }
-
-  // --- Sélecteur de catégorie (barre d'ajout) ---
+  // ===== Sélecteur de catégorie =====
   function renderCategoryOptions() {
     const prev = addCategory.value;
     addCategory.innerHTML = '';
@@ -114,22 +201,25 @@
     if (state.categories.some((c) => c.id === prev)) addCategory.value = prev;
   }
 
-  // --- Badge (articles restants) ---
+  // ===== Badge =====
   function updateBadge() {
-    const n = state.items.filter((it) => it.onList && !it.checked).length;
+    const L = currentList();
+    const n = Object.values(L).filter((v) => v === false).length;
     if (n > 0) { listeBadge.textContent = n > 99 ? '99+' : n; listeBadge.classList.remove('hidden'); }
     else listeBadge.classList.add('hidden');
   }
 
-  // --- Vue : Liste ---
+  // ===== Vue Liste =====
   function renderListe() {
-    const onList = state.items.filter((it) => it.onList);
+    const L = currentList();
+    const onList = Object.keys(L).map(itemById).filter(Boolean);
     viewListe.innerHTML = '';
 
     if (onList.length === 0) {
       viewListe.innerHTML = `
         <div class="empty"><span class="emoji">🛒</span>
-        Votre liste est vide.<br />Ajoutez un article ci-dessus.</div>`;
+        Liste vide pour <b>${escapeHtml(relLabel(state.currentWeek).toLowerCase())}</b>.<br />
+        Ajoutez un article ci-dessus.</div>`;
       updateBadge();
       return;
     }
@@ -137,8 +227,8 @@
     state.categories.forEach((cat) => {
       const items = onList.filter((it) => it.categoryId === cat.id);
       if (items.length === 0) return;
-      items.sort((a, b) => (a.checked - b.checked) || a.name.localeCompare(b.name, 'fr'));
-      const remaining = items.filter((i) => !i.checked).length;
+      items.sort((a, b) => (isChecked(a.id) - isChecked(b.id)) || a.name.localeCompare(b.name, 'fr'));
+      const remaining = items.filter((i) => !isChecked(i.id)).length;
 
       const group = document.createElement('div');
       group.className = 'cat-group';
@@ -163,7 +253,7 @@
       viewListe.appendChild(group);
     }
 
-    if (onList.some((i) => i.checked)) {
+    if (onList.some((i) => isChecked(i.id))) {
       const bar = document.createElement('div');
       bar.className = 'clear-bar';
       const btn = document.createElement('button');
@@ -178,7 +268,7 @@
 
   function itemRow(it) {
     const row = document.createElement('div');
-    row.className = 'item' + (it.checked ? ' checked' : '');
+    row.className = 'item' + (isChecked(it.id) ? ' checked' : '');
     row.innerHTML = `
       <span class="check"><svg viewBox="0 0 24 24" width="15" height="15"><path fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" d="M5 12.5l4 4 10-10"/></svg></span>
       <span class="item-name">${escapeHtml(it.name)}</span>
@@ -193,7 +283,7 @@
     return row;
   }
 
-  // --- Vue : Historique ---
+  // ===== Vue Historique =====
   function renderHistorique() {
     const q = norm(searchInput.value || '');
     let items = state.items.slice();
@@ -240,16 +330,17 @@
     sel.addEventListener('change', () => { setItemCategory(it.id, sel.value); renderHistorique(); });
 
     const btn = document.createElement('button');
-    btn.className = 'hadd' + (it.onList ? ' on' : '');
-    btn.textContent = it.onList ? '✓' : '+';
-    btn.setAttribute('aria-label', it.onList ? 'Retirer de la liste' : 'Ajouter à la liste');
-    btn.addEventListener('click', () => { toggleOnList(it.id); renderHistorique(); renderListe(); });
+    const on = isOnList(it.id);
+    btn.className = 'hadd' + (on ? ' on' : '');
+    btn.textContent = on ? '✓' : '+';
+    btn.setAttribute('aria-label', on ? 'Retirer de la liste' : 'Ajouter à la liste');
+    btn.addEventListener('click', () => { toggleOnList(it.id); renderHistorique(); updateBadge(); });
 
     row.append(name, sel, btn);
     return row;
   }
 
-  // --- Vue : Catégories ---
+  // ===== Vue Catégories =====
   const catList = $('#catList');
   const addCatForm = $('#addCatForm');
   const newCatInput = $('#newCatInput');
@@ -313,7 +404,75 @@
     save(); refreshAll(); renderCatList();
   });
 
-  // --- Navigation (barre flottante) ---
+  // ===== Menu Semaine =====
+  const weekBtn = $('#weekBtn');
+  const weekBtnLabel = $('#weekBtnLabel');
+  const weekMenu = $('#weekMenu');
+  const weekBackdrop = $('#weekBackdrop');
+  const weekMenuList = $('#weekMenuList');
+
+  function renderWeekButton() {
+    weekBtnLabel.textContent = shortLabel(state.currentWeek);
+  }
+
+  function weekOptions() {
+    const keys = new Set();
+    const base = mondayOf(new Date());
+    for (let i = -2; i <= 6; i++) {
+      const m = new Date(base); m.setDate(m.getDate() + i * 7);
+      keys.add(weekKeyOf(m));
+    }
+    keys.add(state.currentWeek);
+    // toute semaine passée qui contient des articles
+    Object.keys(state.lists).forEach((k) => { if (listCount(k) > 0) keys.add(k); });
+    return Array.from(keys).sort((a, b) => mondayFromKey(a) - mondayFromKey(b));
+  }
+
+  function renderWeekMenu() {
+    weekMenuList.innerHTML = '';
+    weekOptions().forEach((key) => {
+      const btn = document.createElement('button');
+      btn.className = 'week-row' + (key === state.currentWeek ? ' current' : '');
+      btn.setAttribute('role', 'menuitem');
+      const count = listCount(key);
+      btn.innerHTML = `
+        <div class="week-row-main">
+          <div class="week-row-label">${escapeHtml(relLabel(key))}</div>
+          <div class="week-row-range">${escapeHtml(rangeLabel(key))}</div>
+        </div>
+        ${count ? `<span class="week-row-count">${count}</span>` : ''}
+        ${key === state.currentWeek ? '<svg class="week-row-check" viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg>' : ''}`;
+      btn.addEventListener('click', () => selectWeek(key));
+      weekMenuList.appendChild(btn);
+    });
+  }
+
+  function openWeekMenu() {
+    renderWeekMenu();
+    weekMenu.classList.remove('hidden');
+    weekBackdrop.classList.remove('hidden');
+    weekBtn.classList.add('open');
+  }
+  function closeWeekMenu() {
+    weekMenu.classList.add('hidden');
+    weekBackdrop.classList.add('hidden');
+    weekBtn.classList.remove('open');
+  }
+  function selectWeek(key) {
+    state.currentWeek = key;
+    if (!state.lists[key]) state.lists[key] = {};
+    save();
+    renderWeekButton();
+    renderListe();
+    closeWeekMenu();
+  }
+
+  weekBtn.addEventListener('click', () => {
+    if (weekMenu.classList.contains('hidden')) openWeekMenu(); else closeWeekMenu();
+  });
+  weekBackdrop.addEventListener('click', closeWeekMenu);
+
+  // ===== Navigation =====
   const TABS = ['liste', 'historique', 'categories'];
   const TITLES = { liste: 'Liste', historique: 'Historique', categories: 'Catégories' };
   const VIEWS = { liste: viewListe, historique: viewHist, categories: viewCats };
@@ -327,28 +486,24 @@
     const to = TABS.indexOf(tab);
     const dir = to > from ? 'from-right' : 'from-left';
     currentTab = tab;
+    closeWeekMenu();
 
-    // indicateur qui glisse
     indicator.style.setProperty('--i', to);
-
-    // boutons actifs
     tabBtns.forEach((b) => b.classList.toggle('active', b.dataset.tab === tab));
 
-    // titre + barre d'ajout (visible uniquement sur Liste)
     pageTitle.textContent = TITLES[tab];
     addForm.classList.toggle('hidden', tab !== 'liste');
+    weekBtn.classList.toggle('hidden', tab !== 'liste');
 
-    // rendu de la vue ciblée
     if (tab === 'liste') renderListe();
     else if (tab === 'historique') renderHistorique();
     else if (tab === 'categories') renderCatList();
 
-    // affichage + animation directionnelle
     TABS.forEach((t) => {
       const v = VIEWS[t];
       if (t === tab) {
         v.classList.remove('hidden', 'from-right', 'from-left');
-        void v.offsetWidth; // relance l'animation
+        void v.offsetWidth;
         v.classList.add(dir);
       } else {
         v.classList.add('hidden');
@@ -359,7 +514,7 @@
 
   tabBtns.forEach((btn) => btn.addEventListener('click', () => switchTab(btn.dataset.tab)));
 
-  // --- Ajout ---
+  // ===== Ajout =====
   addForm.addEventListener('submit', (e) => {
     e.preventDefault();
     addItem(addInput.value, addCategory.value);
@@ -368,7 +523,7 @@
   });
   searchInput.addEventListener('input', renderHistorique);
 
-  // --- Utilitaires ---
+  // ===== Divers =====
   function escapeHtml(s) {
     return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   }
@@ -378,7 +533,6 @@
     if (currentTab === 'historique') renderHistorique();
   }
 
-  // --- Astuce installation iOS ---
   (function iosHint() {
     const hint = $('#iosHint');
     const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
@@ -392,12 +546,12 @@
     });
   })();
 
-  // --- Service worker ---
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
   }
 
-  // --- Init ---
+  // ===== Init =====
   renderCategoryOptions();
+  renderWeekButton();
   renderListe();
 })();

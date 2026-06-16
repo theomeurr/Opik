@@ -24,6 +24,11 @@
   <div class="app">
     <header class="header">
       <h1 id="pageTitle">Liste</h1>
+      <button id="weekBtn" class="week-btn" aria-haspopup="true" aria-label="Choisir la semaine">
+        <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><path fill="currentColor" d="M7 2v2H5a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2V2h-2v2H9V2H7Zm12 7v10H5V9h14Z"/></svg>
+        <span id="weekBtnLabel">Cette semaine</span>
+        <svg class="week-chevron" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M7 10l5 5 5-5z"/></svg>
+      </button>
     </header>
 
     <form id="addForm" class="add-bar" autocomplete="off">
@@ -80,6 +85,13 @@
       </button>
     </div>
   </nav>
+
+  <!-- Menu sélection de semaine -->
+  <div id="weekBackdrop" class="week-backdrop hidden"></div>
+  <div id="weekMenu" class="week-menu hidden" role="menu" aria-label="Choisir la semaine">
+    <div class="week-menu-title">Choisir la semaine</div>
+    <div id="weekMenuList" class="week-menu-list"></div>
+  </div>
 
   <!-- iOS install hint -->
   <div id="iosHint" class="ios-hint hidden">

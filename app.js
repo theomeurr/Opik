@@ -174,6 +174,34 @@
   function norm(s) { return s.trim().toLowerCase(); }
   function itemById(id) { return state.items.find((i) => i.id === id); }
 
+  // ===== Auto-catégorisation =====
+  function deburr(s) { return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
+  // syn = morceaux trouvés dans le NOM d'une catégorie ; kw = mots-clés de l'article
+  const CAT_RULES = [
+    { syn: ['fruit', 'legume'], kw: ['pomme', 'banane', 'tomate', 'salade', 'carotte', 'courgette', 'oignon', 'ail', 'patate', 'pomme de terre', 'fraise', 'citron', 'orange', 'poire', 'raisin', 'brocoli', 'epinard', 'champignon', 'avocat', 'concombre', 'poivron', 'legume', 'fruit', 'kiwi', 'melon', 'pasteque', 'ananas', 'mangue', 'celeri', 'poireau', 'radis', 'betterave', 'persil', 'basilic', 'menthe', 'courge', 'aubergine', 'haricot vert', 'clementine', 'mandarine', 'abricot', 'peche', 'cerise', 'framboise', 'myrtille'] },
+    { syn: ['boulang'], kw: ['pain', 'baguette', 'croissant', 'brioche', 'viennoiserie', 'pain de mie', 'chocolatine', 'tradition'] },
+    { syn: ['laitier', 'cremerie'], kw: ['lait', 'yaourt', 'yahourt', 'fromage', 'beurre', 'creme', 'oeuf', 'oeufs', 'emmental', 'comte', 'mozzarella', 'camembert', 'skyr', 'fromage blanc', 'petit suisse', 'chevre', 'raclette', 'parmesan', 'gruyere'] },
+    { syn: ['viande', 'poisson'], kw: ['poulet', 'boeuf', 'porc', 'jambon', 'saucisse', 'steak', 'viande', 'poisson', 'saumon', 'thon', 'crevette', 'dinde', 'lardon', 'merguez', 'escalope', 'cote', 'cabillaud', 'colin', 'sardine', 'haché', 'hache', 'nuggets', 'cordon bleu'] },
+    { syn: ['surgel'], kw: ['surgel', 'glace', 'glacon', 'frites', 'creme glacee'] },
+    { syn: ['boisson'], kw: ['eau', 'jus', 'soda', 'coca', 'biere', 'vin', 'limonade', 'sirop', 'perrier', 'oasis', 'ice tea', 'cidre', 'champagne', 'pastis', 'ricard', 'orangina', 'schweppes'] },
+    { syn: ['hygi', 'entretien', 'menage'], kw: ['savon', 'shampoing', 'shampooing', 'dentifrice', 'gel douche', 'papier toilette', 'pq', 'mouchoir', 'lessive', 'liquide vaisselle', 'eponge', 'nettoyant', 'deodorant', 'coton', 'serviette', 'couche', 'rasoir', 'lingette', 'sopalin', 'essuie-tout', 'essuie tout', 'javel', 'brosse a dent', 'demaquillant', 'gel', 'tampon'] },
+    { syn: ['epicerie'], kw: ['pate', 'pates', 'riz', 'farine', 'sucre', 'sel', 'huile', 'vinaigre', 'conserve', 'cafe', 'the', 'chocolat', 'biscuit', 'cereale', 'miel', 'confiture', 'sauce', 'ketchup', 'mayonnaise', 'moutarde', 'epice', 'lentille', 'haricot', 'pois chiche', 'semoule', 'nutella', 'gateau', 'chips', 'bonbon', 'cacao', 'levure', 'compote', 'soupe', 'pizza', 'taboule'] },
+  ];
+  function matchCat(syn) {
+    const c = state.categories.find((cat) => syn.some((s) => deburr(cat.name).includes(s)));
+    return c ? c.id : null;
+  }
+  function guessCategory(name) {
+    const nd = deburr(name);
+    for (const rule of CAT_RULES) {
+      if (rule.kw.some((k) => nd.includes(k))) {
+        const id = matchCat(rule.syn);
+        if (id) return id;
+      }
+    }
+    return null;
+  }
+
   function currentList() {
     if (!state.lists[state.currentWeek]) state.lists[state.currentWeek] = {};
     return state.lists[state.currentWeek];
@@ -192,13 +220,15 @@
   function addItem(name, categoryId) {
     const clean = name.trim();
     if (!clean) return;
+    const auto = !categoryId || categoryId === '__auto__';
     let item = state.items.find((it) => norm(it.name) === norm(clean));
     if (item) {
       item.lastUsed = Date.now();
-      if (categoryId) item.categoryId = categoryId;
+      if (!auto) item.categoryId = categoryId; // override manuel uniquement
     } else {
+      const cat = auto ? (guessCategory(clean) || fallbackCatId()) : categoryId;
       item = {
-        id: uid(), name: clean, categoryId: categoryId || fallbackCatId(), order: nextOrder(),
+        id: uid(), name: clean, categoryId: cat, order: nextOrder(),
         createdAt: Date.now(), lastUsed: Date.now(),
       };
       state.items.push(item);
@@ -286,12 +316,15 @@
   function renderCategoryOptions() {
     const prev = addCategory.value;
     addCategory.innerHTML = '';
+    const auto = document.createElement('option');
+    auto.value = '__auto__'; auto.textContent = '🪄 Auto';
+    addCategory.appendChild(auto);
     state.categories.forEach((c) => {
       const opt = document.createElement('option');
       opt.value = c.id; opt.textContent = c.name;
       addCategory.appendChild(opt);
     });
-    if (state.categories.some((c) => c.id === prev)) addCategory.value = prev;
+    addCategory.value = (prev && (prev === '__auto__' || state.categories.some((c) => c.id === prev))) ? prev : '__auto__';
   }
 
   function updateBadge() {
@@ -896,6 +929,43 @@
   });
   weekBackdrop.addEventListener('click', closeWeekMenu);
 
+  // ===== Partage de la liste =====
+  function buildShareText() {
+    const L = currentList();
+    const lines = [`🛒 Courses — ${relLabel(state.currentWeek)} (${rangeLabel(state.currentWeek)})`];
+    const used = new Set();
+    state.categories.forEach((cat) => {
+      const its = Object.keys(L).map(itemById).filter((it) => it && it.categoryId === cat.id);
+      if (!its.length) return;
+      its.sort((a, b) => (isChecked(a.id) - isChecked(b.id)) || ((a.order || 0) - (b.order || 0)));
+      lines.push('', cat.name.toUpperCase());
+      its.forEach((it) => {
+        used.add(it.id);
+        const q = qtyOf(it.id);
+        lines.push(`${isChecked(it.id) ? '✓' : '•'} ${it.name}${q > 1 ? ` ×${q}` : ''}`);
+      });
+    });
+    const orphans = Object.keys(L).map(itemById).filter((it) => it && !used.has(it.id));
+    if (orphans.length) {
+      lines.push('', 'AUTRES');
+      orphans.forEach((it) => { const q = qtyOf(it.id); lines.push(`${isChecked(it.id) ? '✓' : '•'} ${it.name}${q > 1 ? ` ×${q}` : ''}`); });
+    }
+    return lines.join('\n');
+  }
+
+  async function shareList() {
+    if (Object.keys(currentList()).length === 0) { showToast('La liste est vide.', null); return; }
+    const text = buildShareText();
+    try {
+      if (navigator.share) { await navigator.share({ title: 'Liste de courses', text }); return; }
+    } catch (e) { if (e && e.name === 'AbortError') return; }
+    try {
+      await navigator.clipboard.writeText(text);
+      showToast('Liste copiée dans le presse-papier', null);
+    } catch (e) { showToast('Partage indisponible sur cet appareil', null); }
+  }
+  $('#shareBtn').addEventListener('click', shareList);
+
   // ===== Feuille : copier une autre semaine =====
   const copySheet = $('#copySheet');
   const copyBackdrop = $('#copyBackdrop');
@@ -956,6 +1026,7 @@
     addForm.classList.toggle('hidden', tab !== 'liste');
     wishForm.classList.toggle('hidden', tab !== 'wishlist');
     weekBtn.classList.toggle('hidden', tab !== 'liste');
+    $('#shareBtn').classList.toggle('hidden', tab !== 'liste');
     tabbarInner.classList.toggle('wish', tab === 'wishlist');
 
     if (tab === 'liste') renderListe();

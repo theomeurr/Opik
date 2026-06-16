@@ -6,9 +6,9 @@ const path = require('path');
 
 // --- palette ---
 const BG = [13, 13, 15];          // noir épuré #0d0d0f
-const GREEN_TOP = [74, 222, 128]; // #4ade80
-const GREEN_BOT = [22, 163, 74];  // #16a34a
-const GREEN_MID = [34, 197, 94];  // #22c55e
+const ACC_TOP = [242, 201, 76];   // #f2c94c (moutarde clair)
+const ACC_BOT = [154, 107, 0];    // #9a6b00 (curry foncé)
+const ACC_MID = [221, 165, 12];   // #dda50c
 const WHITE = [255, 255, 255];
 
 function lerp(a, b, t) { return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t]; }
@@ -53,12 +53,12 @@ function sample(px, py) {
 
   // deux anses fines de type tote bag (dessinées avant le corps)
   const handle = (cx) => archContains(px, py, cx, byTop, 0.052, 0.08);
-  if (handle(0.405) || handle(0.595)) over(GREEN_MID);
+  if (handle(0.405) || handle(0.595)) over(ACC_MID);
 
   // corps avec dégradé vertical
   if (inBody) {
     const t = Math.min(1, Math.max(0, (py - byTop) / bh));
-    over(lerp(GREEN_TOP, GREEN_BOT, t));
+    over(lerp(ACC_TOP, ACC_BOT, t));
 
     // coche blanche centrée sur le sac
     const p1 = [0.40, 0.62];

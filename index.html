@@ -24,11 +24,16 @@
   <div class="app">
     <header class="header">
       <h1 id="pageTitle">Liste</h1>
-      <button id="weekBtn" class="week-btn" aria-haspopup="true" aria-label="Choisir la semaine">
-        <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><path fill="currentColor" d="M7 2v2H5a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2V2h-2v2H9V2H7Zm12 7v10H5V9h14Z"/></svg>
-        <span id="weekBtnLabel">Cette semaine</span>
-        <svg class="week-chevron" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M7 10l5 5 5-5z"/></svg>
-      </button>
+      <div class="header-actions">
+        <button id="shareBtn" class="icon-pill" aria-label="Partager la liste">
+          <svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true"><path fill="currentColor" d="M18 16a3 3 0 0 0-2.4 1.2l-6.7-3.5a3 3 0 0 0 0-1.4l6.7-3.5A3 3 0 1 0 15 6c0 .2 0 .5.1.7L8.4 10.2a3 3 0 1 0 0 3.6l6.7 3.5c0 .2-.1.5-.1.7a3 3 0 1 0 3-2Z"/></svg>
+        </button>
+        <button id="weekBtn" class="week-btn" aria-haspopup="true" aria-label="Choisir la semaine">
+          <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><path fill="currentColor" d="M7 2v2H5a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2V2h-2v2H9V2H7Zm12 7v10H5V9h14Z"/></svg>
+          <span id="weekBtnLabel">Cette semaine</span>
+          <svg class="week-chevron" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M7 10l5 5 5-5z"/></svg>
+        </button>
+      </div>
     </header>
 
     <form id="addForm" class="add-bar" autocomplete="off">

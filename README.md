@@ -2,13 +2,18 @@
 
 Liste de courses **simple et épurée**, installable comme application (PWA) sur iOS, iPadOS, Android et desktop. Thème clair.
 
-## Fonctionnalités (base)
+## Fonctionnalités
 
-- **Ajout rapide** d'un article avec sa catégorie.
-- **Liste active groupée par catégorie**, cases à cocher, retrait des articles cochés.
-- **Historique complet** de tout ce qui a déjà été saisi : on retrouve et re-ajoute un article en un tap.
-- **Catégories modifiables** : créer, renommer, réordonner, supprimer.
+- **Ajout rapide** (et **multiple** : `lait, pain, œufs`) avec catégorie.
+- **Liste par semaine** : sélecteur de semaine + **copie** d'une semaine à l'autre (courses récurrentes).
+- **Liste groupée par catégorie**, cases à cocher, **quantités** par article, **barre de progression**.
+- **Glisser-déposer** tactile pour réordonner **articles** et **catégories**.
+- **Couleur par catégorie** (palette).
+- **Historique complet** de tout ce qui a déjà été saisi : on re-ajoute en un tap.
+- **Annuler** (toast) après suppression d'un article / d'une catégorie.
+- **Catégories modifiables** : créer, renommer, réordonner, recolorer, supprimer.
 - **Recherche** dans l'historique.
+- **Navigation flottante** style iOS (animations).
 - **100 % hors-ligne** (service worker) et **données en local** (localStorage) — rien n'est envoyé sur un serveur.
 
 ## Installer sur iPhone / iPad

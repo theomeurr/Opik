@@ -1,5 +1,5 @@
 // Service worker — cache de l'app shell pour fonctionnement hors-ligne.
-const CACHE = 'courses-v5';
+const CACHE = 'courses-v6';
 const ASSETS = [
   './',
   './index.html',

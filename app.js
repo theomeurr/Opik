@@ -246,6 +246,10 @@
       return;
     }
 
+    const total = onList.length;
+    const done = onList.filter((i) => isChecked(i.id)).length;
+    viewListe.appendChild(progressEl(done, total));
+
     state.categories.forEach((cat) => {
       const items = onList.filter((it) => it.categoryId === cat.id);
       if (items.length === 0) return;
@@ -281,12 +285,26 @@
       const btn = document.createElement('button');
       btn.className = 'clear-btn';
       btn.textContent = 'Retirer les articles cochés';
-      btn.addEventListener('click', () => { clearChecked(); renderListe(); });
+      btn.addEventListener('click', () => deleteWithUndo('Articles cochés retirés', clearChecked, renderListe));
       bar.appendChild(btn);
       viewListe.appendChild(bar);
     }
     appendCopyBar();
     updateBadge();
+  }
+
+  function progressEl(done, total) {
+    const pct = total ? Math.round((done / total) * 100) : 0;
+    const wrap = document.createElement('div');
+    wrap.className = 'progress' + (done === total ? ' done' : '');
+    const label = done < total ? `${done} / ${total} pris` : `Tout est pris 🎉`;
+    wrap.innerHTML = `
+      <div class="progress-head">
+        <span class="progress-label">${label}</span>
+        <span class="progress-pct">${pct}%</span>
+      </div>
+      <div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div>`;
+    return wrap;
   }
 
   function appendCopyBar() {
@@ -327,28 +345,29 @@
       e.stopPropagation(); setQty(it.id, Number(b.dataset.d)); renderListe();
     }));
     row.querySelector('.item-del').addEventListener('click', (e) => {
-      e.stopPropagation(); removeFromList(it.id); renderListe();
+      e.stopPropagation();
+      deleteWithUndo(`« ${it.name} » retiré`, () => removeFromList(it.id), renderListe);
     });
     const handle = row.querySelector('.drag-handle');
-    handle.addEventListener('pointerdown', (e) => startDrag(e, row));
+    handle.addEventListener('pointerdown', (e) => startDrag(e, row, row.parentElement, '.item', commitItemOrder));
     handle.addEventListener('click', (e) => e.stopPropagation());
     return row;
   }
 
-  // ===== Glisser-déposer (Pointer Events, compatible iOS) =====
-  let drag = null;        // { row, card }
+  // ===== Glisser-déposer générique (Pointer Events, compatible iOS) =====
+  let drag = null;        // { el, container, selector, commit, moved }
   let lastDragEnd = 0;
-  function startDrag(e, row) {
+  function startDrag(e, el, container, selector, commit) {
     if (e.button != null && e.button !== 0) return;
     e.preventDefault();
-    drag = { row, card: row.parentElement, moved: false };
-    row.classList.add('dragging');
+    drag = { el, container, selector, commit, moved: false };
+    el.classList.add('dragging');
     document.addEventListener('pointermove', onDragMove, { passive: false });
     document.addEventListener('pointerup', endDrag);
     document.addEventListener('pointercancel', endDrag);
   }
-  function dragAfter(card, y) {
-    const els = [...card.querySelectorAll('.item:not(.dragging)')];
+  function dragAfter(container, selector, y) {
+    const els = [...container.querySelectorAll(selector + ':not(.dragging)')];
     for (const el of els) {
       const b = el.getBoundingClientRect();
       if (y < b.top + b.height / 2) return el;
@@ -359,28 +378,32 @@
     if (!drag) return;
     e.preventDefault();
     drag.moved = true;
-    const { card, row } = drag;
-    const after = dragAfter(card, e.clientY);
-    if (after == null) { if (card.lastElementChild !== row) card.appendChild(row); }
-    else if (after !== row) card.insertBefore(row, after);
+    const { container, el, selector } = drag;
+    const after = dragAfter(container, selector, e.clientY);
+    if (after == null) { if (container.lastElementChild !== el) container.appendChild(el); }
+    else if (after !== el) container.insertBefore(el, after);
   }
   function endDrag() {
     if (!drag) return;
-    const { card, row, moved } = drag;
-    row.classList.remove('dragging');
+    const { el, container, commit, moved } = drag;
+    el.classList.remove('dragging');
     document.removeEventListener('pointermove', onDragMove);
     document.removeEventListener('pointerup', endDrag);
     document.removeEventListener('pointercancel', endDrag);
-    if (moved) {
-      [...card.querySelectorAll('.item')].forEach((el, i) => {
-        const it = itemById(el.dataset.id);
-        if (it) it.order = i + 1;
-      });
-      save();
-      lastDragEnd = Date.now();
-      updateBadge();
-    }
+    if (moved) { commit(container); save(); lastDragEnd = Date.now(); }
     drag = null;
+  }
+  function commitItemOrder(container) {
+    [...container.querySelectorAll('.item')].forEach((el, i) => {
+      const it = itemById(el.dataset.id);
+      if (it) it.order = i + 1;
+    });
+    updateBadge();
+  }
+  function commitCatOrder(container) {
+    const ids = [...container.querySelectorAll('.cat-item')].map((el) => el.dataset.id);
+    state.categories.sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id));
+    renderCategoryOptions();
   }
 
   // ===== Vue Historique =====
@@ -446,9 +469,16 @@
 
   function renderCatList() {
     catList.innerHTML = '';
-    state.categories.forEach((c, idx) => {
+    state.categories.forEach((c) => {
       const li = document.createElement('li');
       li.className = 'cat-item';
+      li.dataset.id = c.id;
+
+      const handle = document.createElement('span');
+      handle.className = 'drag-handle';
+      handle.setAttribute('aria-label', 'Déplacer');
+      handle.innerHTML = `<svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M4 7h16v2H4V7Zm0 4h16v2H4v-2Zm0 4h16v2H4v-2Z"/></svg>`;
+      handle.addEventListener('pointerdown', (e) => startDrag(e, li, catList, '.cat-item', commitCatOrder));
 
       const dot = document.createElement('span');
       dot.className = 'cat-dot'; dot.style.background = c.color;
@@ -459,16 +489,6 @@
         const v = input.value.trim();
         if (v) { c.name = v; save(); refreshAll(); } else { input.value = c.name; }
       });
-
-      const up = document.createElement('button');
-      up.className = 'cat-move'; up.textContent = '↑';
-      up.style.opacity = idx === 0 ? '.3' : '1';
-      up.addEventListener('click', () => moveCat(idx, -1));
-
-      const down = document.createElement('button');
-      down.className = 'cat-move'; down.textContent = '↓';
-      down.style.opacity = idx === state.categories.length - 1 ? '.3' : '1';
-      down.addEventListener('click', () => moveCat(idx, 1));
 
       const del = document.createElement('button');
       del.className = 'cat-remove'; del.textContent = '🗑';
@@ -486,25 +506,19 @@
         colors.appendChild(s);
       });
 
-      li.append(dot, input, up, down, del, colors);
+      li.append(handle, dot, input, del, colors);
       catList.appendChild(li);
     });
   }
 
-  function moveCat(idx, dir) {
-    const j = idx + dir;
-    if (j < 0 || j >= state.categories.length) return;
-    const arr = state.categories;
-    [arr[idx], arr[j]] = [arr[j], arr[idx]];
-    save(); refreshAll(); renderCatList();
-  }
   function removeCat(id) {
-    if (state.categories.length <= 1) { alert('Gardez au moins une catégorie.'); return; }
+    if (state.categories.length <= 1) { showToast('Gardez au moins une catégorie.', null); return; }
     const target = fallbackCatId() === id ? state.categories.find((c) => c.id !== id).id : fallbackCatId();
-    if (!confirm('Supprimer cette catégorie ? Ses articles iront dans « ' + catName(target) + ' ».')) return;
-    state.items.forEach((it) => { if (it.categoryId === id) it.categoryId = target; });
-    state.categories = state.categories.filter((c) => c.id !== id);
-    save(); refreshAll(); renderCatList();
+    const name = catName(id);
+    deleteWithUndo(`Catégorie « ${name} » supprimée`, () => {
+      state.items.forEach((it) => { if (it.categoryId === id) it.categoryId = target; });
+      state.categories = state.categories.filter((c) => c.id !== id);
+    });
   }
 
   addCatForm.addEventListener('submit', (e) => {
@@ -660,7 +674,9 @@
   // ===== Ajout =====
   addForm.addEventListener('submit', (e) => {
     e.preventDefault();
-    addItem(addInput.value, addCategory.value);
+    // Ajout multiple : séparé par virgules, points-virgules ou retours ligne
+    const parts = addInput.value.split(/[,;\n]+/).map((s) => s.trim()).filter(Boolean);
+    parts.forEach((n) => addItem(n, addCategory.value));
     addInput.value = ''; addInput.focus();
     renderListe();
   });
@@ -674,6 +690,56 @@
     renderCategoryOptions();
     if (currentTab === 'liste') renderListe(); else updateBadge();
     if (currentTab === 'historique') renderHistorique();
+  }
+  function renderCurrent() {
+    renderCategoryOptions();
+    renderWeekButton();
+    if (currentTab === 'liste') renderListe();
+    else if (currentTab === 'historique') renderHistorique();
+    else renderCatList();
+    updateBadge();
+  }
+
+  // ===== Toast + Annuler =====
+  const toast = $('#toast');
+  const toastMsg = $('#toastMsg');
+  const toastUndo = $('#toastUndo');
+  let toastTimer = null;
+  let undoFn = null;
+
+  function showToast(message, onUndo) {
+    toastMsg.textContent = message;
+    undoFn = onUndo || null;
+    toastUndo.style.display = onUndo ? '' : 'none';
+    toast.classList.remove('hidden');
+    void toast.offsetWidth;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(hideToast, 5000);
+  }
+  function hideToast() {
+    toast.classList.remove('show');
+    clearTimeout(toastTimer);
+    undoFn = null;
+    setTimeout(() => { if (!toast.classList.contains('show')) toast.classList.add('hidden'); }, 280);
+  }
+  toastUndo.addEventListener('click', () => {
+    const fn = undoFn;
+    hideToast();
+    if (fn) fn();
+  });
+
+  function deleteWithUndo(message, mutate, render) {
+    const snap = JSON.stringify(state);
+    mutate();
+    save();
+    (render || renderCurrent)();
+    showToast(message, () => {
+      state = normalize(JSON.parse(snap));
+      orderSeq = state.items.reduce((mx, it) => Math.max(mx, it.order || 0), 0);
+      save();
+      renderCurrent();
+    });
   }
 
   (function iosHint() {

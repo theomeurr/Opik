@@ -32,7 +32,7 @@
     </header>
 
     <form id="addForm" class="add-bar" autocomplete="off">
-      <input id="addInput" class="add-input" type="text" placeholder="Ajouter un article…" enterkeyhint="done" />
+      <input id="addInput" class="add-input" type="text" placeholder="Ajouter… (ex : lait, pain, œufs)" enterkeyhint="done" />
       <select id="addCategory" class="add-cat" aria-label="Catégorie"></select>
       <button type="submit" class="add-btn" aria-label="Ajouter">+</button>
     </form>
@@ -100,6 +100,12 @@
     <div class="sheet-title">Copier une autre semaine</div>
     <div class="sheet-sub">Les articles seront ajoutés à <strong id="copyTargetLabel"></strong>.</div>
     <div id="copyList" class="week-menu-list"></div>
+  </div>
+
+  <!-- Toast "Annuler" -->
+  <div id="toast" class="toast hidden" role="status" aria-live="polite">
+    <span id="toastMsg" class="toast-msg"></span>
+    <button id="toastUndo" class="toast-undo">Annuler</button>
   </div>
 
   <!-- iOS install hint -->

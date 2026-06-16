@@ -86,6 +86,8 @@
     s.categories.forEach((c, i) => { if (!c.color) c.color = PALETTE[i % PALETTE.length]; });
     // ordre des articles
     s.items.forEach((it, i) => { if (typeof it.order !== 'number') it.order = i + 1; });
+    // favoris
+    s.items.forEach((it) => { if (typeof it.fav !== 'boolean') it.fav = false; });
     // valeurs de liste -> objets { c: coché, q: quantité }
     Object.values(s.lists).forEach((L) => {
       Object.keys(L).forEach((id) => {
@@ -190,6 +192,7 @@
     save();
   }
   function setItemCategory(id, categoryId) { const it = itemById(id); if (it) { it.categoryId = categoryId; save(); } }
+  function toggleFav(id) { const it = itemById(id); if (it) { it.fav = !it.fav; save(); } }
   function copyFromWeek(srcKey) {
     const src = state.lists[srcKey];
     if (!src) return;
@@ -421,8 +424,23 @@
     }
     if (items.length === 0) { histList.innerHTML = `<div class="empty">Aucun résultat.</div>`; return; }
 
+    // Section Favoris épinglée en haut
+    const favs = items.filter((it) => it.fav).sort((a, b) => b.lastUsed - a.lastUsed);
+    if (favs.length) {
+      const group = document.createElement('div');
+      group.className = 'cat-group';
+      group.innerHTML = `<div class="cat-group-title"><span class="fav-star">★</span>Favoris</div>`;
+      const card = document.createElement('div');
+      card.className = 'card';
+      favs.forEach((it) => card.appendChild(histRow(it)));
+      group.appendChild(card);
+      histList.appendChild(group);
+    }
+
+    // Le reste, groupé par catégorie (favoris exclus pour éviter les doublons)
+    const rest = items.filter((it) => !it.fav);
     state.categories.forEach((cat) => {
-      const catItems = items.filter((it) => it.categoryId === cat.id).sort((a, b) => b.lastUsed - a.lastUsed);
+      const catItems = rest.filter((it) => it.categoryId === cat.id).sort((a, b) => b.lastUsed - a.lastUsed);
       if (catItems.length === 0) return;
       const group = document.createElement('div');
       group.className = 'cat-group';
@@ -441,6 +459,12 @@
     const name = document.createElement('span');
     name.className = 'hrow-name'; name.textContent = it.name;
 
+    const fav = document.createElement('button');
+    fav.className = 'hfav' + (it.fav ? ' on' : '');
+    fav.setAttribute('aria-label', it.fav ? 'Retirer des favoris' : 'Ajouter aux favoris');
+    fav.innerHTML = `<svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="m12 17.3-6.18 3.7 1.64-7.03L2 9.24l7.19-.61L12 2l2.81 6.63 7.19.61-5.46 4.73L18.18 21z"/></svg>`;
+    fav.addEventListener('click', () => { toggleFav(it.id); renderHistorique(); });
+
     const sel = document.createElement('select');
     sel.className = 'hrow-cat';
     state.categories.forEach((c) => {
@@ -458,7 +482,7 @@
     btn.setAttribute('aria-label', on ? 'Retirer de la liste' : 'Ajouter à la liste');
     btn.addEventListener('click', () => { toggleOnList(it.id); renderHistorique(); updateBadge(); });
 
-    row.append(name, sel, btn);
+    row.append(name, fav, sel, btn);
     return row;
   }
 

@@ -176,28 +176,37 @@
 
   // ===== Auto-catégorisation =====
   function deburr(s) { return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
-  // syn = morceaux trouvés dans le NOM d'une catégorie ; kw = mots-clés de l'article
-  const CAT_RULES = [
-    { syn: ['fruit', 'legume'], kw: ['pomme', 'banane', 'tomate', 'salade', 'carotte', 'courgette', 'oignon', 'ail', 'patate', 'pomme de terre', 'fraise', 'citron', 'orange', 'poire', 'raisin', 'brocoli', 'epinard', 'champignon', 'avocat', 'concombre', 'poivron', 'legume', 'fruit', 'kiwi', 'melon', 'pasteque', 'ananas', 'mangue', 'celeri', 'poireau', 'radis', 'betterave', 'persil', 'basilic', 'menthe', 'courge', 'aubergine', 'haricot vert', 'clementine', 'mandarine', 'abricot', 'peche', 'cerise', 'framboise', 'myrtille'] },
-    { syn: ['boulang'], kw: ['pain', 'baguette', 'croissant', 'brioche', 'viennoiserie', 'pain de mie', 'chocolatine', 'tradition'] },
-    { syn: ['laitier', 'cremerie'], kw: ['lait', 'yaourt', 'yahourt', 'fromage', 'beurre', 'creme', 'oeuf', 'oeufs', 'emmental', 'comte', 'mozzarella', 'camembert', 'skyr', 'fromage blanc', 'petit suisse', 'chevre', 'raclette', 'parmesan', 'gruyere'] },
-    { syn: ['viande', 'poisson'], kw: ['poulet', 'boeuf', 'porc', 'jambon', 'saucisse', 'steak', 'viande', 'poisson', 'saumon', 'thon', 'crevette', 'dinde', 'lardon', 'merguez', 'escalope', 'cote', 'cabillaud', 'colin', 'sardine', 'haché', 'hache', 'nuggets', 'cordon bleu'] },
-    { syn: ['surgel'], kw: ['surgel', 'glace', 'glacon', 'frites', 'creme glacee'] },
-    { syn: ['boisson'], kw: ['eau', 'jus', 'soda', 'coca', 'biere', 'vin', 'limonade', 'sirop', 'perrier', 'oasis', 'ice tea', 'cidre', 'champagne', 'pastis', 'ricard', 'orangina', 'schweppes'] },
-    { syn: ['hygi', 'entretien', 'menage'], kw: ['savon', 'shampoing', 'shampooing', 'dentifrice', 'gel douche', 'papier toilette', 'pq', 'mouchoir', 'lessive', 'liquide vaisselle', 'eponge', 'nettoyant', 'deodorant', 'coton', 'serviette', 'couche', 'rasoir', 'lingette', 'sopalin', 'essuie-tout', 'essuie tout', 'javel', 'brosse a dent', 'demaquillant', 'gel', 'tampon'] },
-    { syn: ['epicerie'], kw: ['pate', 'pates', 'riz', 'farine', 'sucre', 'sel', 'huile', 'vinaigre', 'conserve', 'cafe', 'the', 'chocolat', 'biscuit', 'cereale', 'miel', 'confiture', 'sauce', 'ketchup', 'mayonnaise', 'moutarde', 'epice', 'lentille', 'haricot', 'pois chiche', 'semoule', 'nutella', 'gateau', 'chips', 'bonbon', 'cacao', 'levure', 'compote', 'soupe', 'pizza', 'taboule'] },
+
+  // Lexique de secours minimal si lexicon.js n'est pas chargé.
+  const CAT_FALLBACK = [
+    { syn: ['fruit', 'legume'], kw: ['pomme', 'banane', 'tomate', 'salade', 'carotte', 'legume', 'fruit'] },
+    { syn: ['boulang'], kw: ['pain', 'baguette', 'croissant'] },
+    { syn: ['laitier'], kw: ['lait', 'yaourt', 'fromage', 'beurre', 'creme', 'oeuf'] },
+    { syn: ['viande', 'poisson'], kw: ['poulet', 'boeuf', 'jambon', 'saumon', 'poisson', 'viande'] },
+    { syn: ['surgel'], kw: ['surgele', 'glace', 'frites'] },
+    { syn: ['boisson'], kw: ['eau', 'jus', 'coca', 'biere', 'vin'] },
+    { syn: ['hygi', 'entretien'], kw: ['savon', 'shampoing', 'lessive', 'dentifrice'] },
+    { syn: ['epicerie'], kw: ['pates', 'riz', 'farine', 'sucre', 'cafe', 'chocolat'] },
   ];
+
+  const LEXICON = (typeof window !== 'undefined' && Array.isArray(window.OPIK_LEXICON)) ? window.OPIK_LEXICON : CAT_FALLBACK;
+  // Compile chaque règle en regex "mot entier" (+ pluriel s/x optionnel).
+  const COMPILED = LEXICON.map((r) => {
+    const alt = r.kw
+      .map((k) => deburr(k).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+      .sort((a, b) => b.length - a.length)
+      .join('|');
+    return { syn: r.syn, re: new RegExp('(?:^|[^a-z])(?:' + alt + ')(?:s|x)?(?![a-z])') };
+  });
+
   function matchCat(syn) {
     const c = state.categories.find((cat) => syn.some((s) => deburr(cat.name).includes(s)));
     return c ? c.id : null;
   }
   function guessCategory(name) {
     const nd = deburr(name);
-    for (const rule of CAT_RULES) {
-      if (rule.kw.some((k) => nd.includes(k))) {
-        const id = matchCat(rule.syn);
-        if (id) return id;
-      }
+    for (const r of COMPILED) {
+      if (r.re.test(nd)) { const id = matchCat(r.syn); if (id) return id; }
     }
     return null;
   }

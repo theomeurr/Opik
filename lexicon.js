@@ -1,0 +1,155 @@
+/* Lexique FR pour l'auto-catégorisation des articles de courses.
+ * Chaque entrée : { syn, kw }
+ *  - syn : fragments cherchés dans le NOM d'une catégorie de l'utilisateur
+ *          (insensible aux accents/casse) → permet de mapper vers SA catégorie.
+ *  - kw  : mots-clés d'articles. Le matching se fait par mot entier (+ pluriel
+ *          s/x optionnel), donc « gâteau » ne matche pas « eau ».
+ * L'ordre compte : la 1re règle qui matche gagne (épicerie en dernier = fourre-tout).
+ */
+window.OPIK_LEXICON = [
+  {
+    syn: ['fruit', 'legume'],
+    kw: [
+      'pomme', 'poire', 'banane', 'orange', 'clementine', 'mandarine', 'citron', 'citron vert', 'lime',
+      'pamplemousse', 'raisin', 'fraise', 'framboise', 'myrtille', 'mure', 'groseille', 'cassis', 'cerise',
+      'abricot', 'peche', 'nectarine', 'brugnon', 'prune', 'mirabelle', 'quetsche', 'kiwi', 'mangue', 'papaye',
+      'ananas', 'melon', 'pasteque', 'figue', 'datte', 'grenade', 'litchi', 'fruit de la passion', 'kaki',
+      'coing', 'rhubarbe', 'physalis', 'carambole', 'goyave', 'fruit rouge', 'fruits rouges',
+      'tomate', 'tomate cerise', 'salade', 'laitue', 'mache', 'roquette', 'cresson', 'frisee', 'scarole',
+      'epinard', 'chou', 'chou rouge', 'chou-fleur', 'chou fleur', 'brocoli', 'chou de bruxelles', 'chou kale',
+      'kale', 'carotte', 'courgette', 'aubergine', 'poivron', 'piment', 'concombre', 'cornichon frais',
+      'oignon', 'oignon rouge', 'echalote', 'ail', 'poireau', 'celeri', 'fenouil', 'radis', 'navet',
+      'betterave', 'panais', 'rutabaga', 'topinambour', 'patate', 'pomme de terre', 'patate douce', 'igname',
+      'champignon', 'champignon de paris', 'cepe', 'girolle', 'pleurote', 'haricot vert', 'haricot beurre',
+      'petit pois', 'pois gourmand', 'feve', 'mais', 'courge', 'potiron', 'potimarron', 'butternut', 'citrouille',
+      'avocat', 'gingembre', 'curcuma frais', 'herbes', 'fines herbes', 'persil', 'coriandre', 'basilic',
+      'menthe', 'ciboulette', 'thym', 'romarin', 'laurier', 'aneth', 'estragon', 'sauge', 'oseille',
+      'banane plantain', 'endive', 'blette', 'bette', 'artichaut', 'asperge', 'salsifis', 'crosne', 'legume',
+      'fruit', 'pousse epinard', 'germe de soja', 'edamame',
+    ],
+  },
+  {
+    syn: ['boulang', 'patisserie'],
+    kw: [
+      'pain', 'baguette', 'demi-baguette', 'tradition', 'pain complet', 'pain de mie', 'pain de campagne',
+      'pain aux cereales', 'pain aux noix', 'pain seigle', 'pain de seigle', 'ficelle', 'batard', 'miche',
+      'pain au chocolat', 'chocolatine', 'croissant', 'brioche', 'pain au lait', 'pain aux raisins',
+      'chausson aux pommes', 'viennoiserie', 'beignet', 'donut', 'bagel', 'fougasse', 'focaccia', 'tortilla',
+      'wrap', 'pita', 'naan', 'biscotte', 'pain grille', 'baguette viennoise', 'pain pita', 'pain burger',
+      'pain hot dog', 'buns', 'cracotte', 'pain suedois', 'tarte', 'tartelette', 'eclair', 'flan patissier',
+      'paris-brest', 'mille-feuille', 'macaron', 'cookie geant',
+    ],
+  },
+  {
+    syn: ['laitier', 'cremerie'],
+    kw: [
+      'lait', 'lait demi-ecreme', 'lait entier', 'lait ecreme', 'lait ribot', 'lait de brebis',
+      'yaourt', 'yahourt', 'yaourt grec', 'yaourt nature', 'yaourt a boire', 'skyr', 'fromage blanc',
+      'petit suisse', 'faisselle', 'fromage frais', 'creme', 'creme fraiche', 'creme liquide', 'creme epaisse',
+      'beurre', 'beurre doux', 'beurre demi-sel', 'margarine', 'oeuf', 'oeufs', 'fromage', 'fromage rape',
+      'emmental', 'gruyere', 'comte', 'beaufort', 'raclette', 'tomme', 'mozzarella', 'burrata', 'parmesan',
+      'feta', 'chevre', 'brie', 'camembert', 'coulommiers', 'reblochon', 'munster', 'maroilles', 'morbier',
+      'roquefort', 'bleu', 'cantal', 'cheddar', 'gouda', 'edam', 'babybel', 'kiri', 'vache qui rit', 'boursin',
+      'saint-moret', 'mascarpone', 'ricotta', 'cancoillotte', 'actimel', 'danette', 'danone', 'yop', 'activia',
+      'creme dessert', 'liegeois', 'fromage a tartiner', 'cream cheese', 'philadelphia', 'caprice des dieux',
+    ],
+  },
+  {
+    syn: ['viande', 'poisson', 'boucher', 'volaille', 'charcut', 'traiteur', 'maree'],
+    kw: [
+      'poulet', 'blanc de poulet', 'filet de poulet', 'cuisse de poulet', 'aiguillette', 'escalope', 'dinde',
+      'pintade', 'canard', 'magret', 'lapin', 'caille', 'boeuf', 'steak', 'steak hache', 'viande hachee',
+      'bavette', 'entrecote', 'faux-filet', 'rumsteck', 'roti', 'pot au feu', 'bourguignon', 'paleron', 'gite',
+      'veau', 'blanquette', 'agneau', 'gigot', 'cote d agneau', 'mouton', 'porc', 'cote de porc', 'echine',
+      'travers', 'roti de porc', 'filet mignon', 'jambon', 'jambon blanc', 'jambon cru', 'jambon de bayonne',
+      'lardon', 'bacon', 'poitrine', 'saucisse', 'saucisson', 'chorizo', 'merguez', 'chipolata', 'knacki',
+      'francfort', 'andouille', 'andouillette', 'boudin', 'rillettes', 'terrine', 'pate de campagne', 'foie gras',
+      'nuggets', 'cordon bleu', 'brochette', 'viande', 'charcuterie', 'mortadelle', 'coppa', 'pancetta',
+      'poisson', 'saumon', 'saumon fume', 'truite', 'cabillaud', 'colin', 'lieu', 'merlu', 'dorade', 'bar',
+      'sole', 'limande', 'maquereau', 'sardine', 'hareng', 'anchois', 'thon', 'espadon', 'lotte', 'raie',
+      'eglefin', 'haddock', 'crevette', 'gambas', 'moule', 'huitre', 'coquille saint-jacques', 'saint-jacques',
+      'calamar', 'encornet', 'poulpe', 'crabe', 'tourteau', 'homard', 'langoustine', 'bulot', 'bigorneau',
+      'surimi', 'tarama', 'poisson pane', 'brandade',
+    ],
+  },
+  {
+    syn: ['surgel', 'congel', 'glace'],
+    kw: [
+      'surgele', 'congele', 'glace', 'glacon', 'creme glacee', 'sorbet', 'magnum', 'cornet glace', 'esquimau',
+      'frites', 'pommes noisettes', 'potatoes', 'poisson pane surgele', 'batonnet', 'nuggets surgeles',
+      'legumes surgeles', 'epinards surgeles', 'pizza surgelee', 'glace vanille', 'buche glacee', 'viennetta',
+      'haagen-dazs', 'ben & jerry', 'mister freeze',
+    ],
+  },
+  {
+    syn: ['boisson', 'cave', 'aperitif'],
+    kw: [
+      'eau', 'eau plate', 'eau gazeuse', 'eau petillante', 'eau de source', 'evian', 'vittel', 'volvic',
+      'cristaline', 'contrex', 'hepar', 'badoit', 'perrier', 'san pellegrino', 'salvetat', 'jus', 'jus d orange',
+      'jus de pomme', 'jus de raisin', 'jus multifruit', 'nectar', 'smoothie', 'soda', 'coca', 'coca cola',
+      'pepsi', 'fanta', 'sprite', 'orangina', 'oasis', 'ice tea', 'the glace', 'schweppes', 'limonade', 'tonic',
+      'sirop', 'grenadine', 'menthe a l eau', 'red bull', 'monster', 'energy drink', 'biere', 'blonde', 'ipa',
+      'brune', 'heineken', 'kronenbourg', 'desperados', 'leffe', 'corona', 'grimbergen', 'pelforth', 'vin',
+      'vin rouge', 'vin blanc', 'vin rose', 'champagne', 'cremant', 'prosecco', 'cidre', 'pastis', 'ricard',
+      'whisky', 'vodka', 'rhum', 'gin', 'aperol', 'martini', 'porto', 'kombucha', 'lait d amande', 'lait de soja',
+      'lait d avoine', 'boisson vegetale',
+    ],
+  },
+  {
+    syn: ['hygi', 'entretien', 'menage', 'toilette', 'beaute', 'soin', 'droguerie', 'sante'],
+    kw: [
+      'savon', 'savon de marseille', 'gel douche', 'shampoing', 'shampooing', 'apres-shampoing', 'demelant',
+      'masque cheveux', 'laque', 'gel coiffant', 'cire cheveux', 'coloration', 'dentifrice', 'brosse a dents',
+      'brossette', 'bain de bouche', 'fil dentaire', 'deodorant', 'anti-transpirant', 'parfum', 'eau de toilette',
+      'creme solaire', 'after-sun', 'creme hydratante', 'lait corps', 'baume levres', 'coton', 'coton-tige',
+      'demaquillant', 'lingette', 'mouchoir', 'papier toilette', 'pq', 'essuie-tout', 'sopalin', 'serviette hygienique',
+      'tampon', 'protege-slip', 'rasoir', 'mousse a raser', 'gel a raser', 'epilation', 'cire', 'pince a epiler',
+      'lessive', 'adoucissant', 'assouplissant', 'liquide vaisselle', 'tablette lave-vaisselle', 'sel regenerant',
+      'liquide de rincage', 'nettoyant', 'multi-usage', 'spray nettoyant', 'javel', 'eau de javel', 'desinfectant',
+      'anticalcaire', 'detartrant', 'deboucheur', 'eponge', 'grattoir', 'chiffon', 'balai', 'serpillere',
+      'sac poubelle', 'sac congelation', 'papier aluminium', 'aluminium', 'film etirable', 'film alimentaire',
+      'papier cuisson', 'allumette', 'briquet', 'bougie', 'ampoule', 'pile', 'gel hydroalcoolique', 'masque',
+      'pansement', 'paracetamol', 'doliprane', 'coton hydrophile', 'sparadrap', 'desodorisant', 'recharge',
+    ],
+  },
+  {
+    syn: ['bebe', 'enfant', 'nourrisson', 'puericulture'],
+    kw: [
+      'couche', 'couches', 'lingette bebe', 'lait infantile', 'lait 1er age', 'lait 2eme age', 'lait croissance',
+      'petit pot', 'compote bebe', 'biberon', 'tetine', 'sucette', 'liniment', 'eau nettoyante', 'cereales bebe',
+      'bledine', 'bledina', 'liniment oleo', 'gourde compote',
+    ],
+  },
+  {
+    syn: ['animal', 'animaux', 'chien', 'chat'],
+    kw: [
+      'croquette', 'croquettes', 'pate pour chat', 'pate pour chien', 'litiere', 'friandise chien',
+      'friandise chat', 'os a macher', 'sachet fraicheur', 'whiskas', 'felix', 'sheba', 'ultima', 'pedigree',
+      'frolic', 'foin', 'graines oiseau', 'aquarium',
+    ],
+  },
+  {
+    syn: ['epicerie', 'sec', 'condiment', 'petit dejeuner', 'sucre', 'apero'],
+    kw: [
+      'pate', 'pates', 'spaghetti', 'penne', 'fusilli', 'coquillette', 'tagliatelle', 'macaroni', 'lasagne',
+      'ravioli', 'tortellini', 'gnocchi', 'nouilles', 'vermicelle', 'riz', 'riz basmati', 'riz complet',
+      'riz thai', 'risotto', 'quinoa', 'boulgour', 'semoule', 'couscous', 'polenta', 'farine', 'maizena',
+      'levure', 'levure chimique', 'levure boulanger', 'sucre', 'sucre vanille', 'cassonade', 'sucre glace',
+      'edulcorant', 'sel', 'gros sel', 'poivre', 'epice', 'curry', 'paprika', 'cumin', 'curcuma', 'cannelle',
+      'muscade', 'herbes de provence', 'bouillon', 'cube', 'fond de veau', 'huile', 'huile d olive',
+      'huile de tournesol', 'huile de colza', 'vinaigre', 'vinaigre balsamique', 'moutarde', 'ketchup',
+      'mayonnaise', 'sauce', 'sauce tomate', 'coulis', 'concentre de tomate', 'pesto', 'sauce soja',
+      'sauce barbecue', 'vinaigrette', 'cornichon', 'olive', 'capres', 'conserve', 'haricot', 'lentille',
+      'pois chiche', 'flageolet', 'thon en boite', 'cassoulet', 'soupe', 'veloute', 'puree', 'gateau',
+      'biscuit', 'cookie', 'sable', 'madeleine', 'quatre-quarts', 'gaufre', 'crepe', 'pancake', 'cereales',
+      'muesli', 'granola', 'flocon d avoine', 'corn flakes', 'confiture', 'gelee', 'miel', 'pate a tartiner',
+      'nutella', 'sirop d erable', 'chocolat', 'chocolat noir', 'chocolat au lait', 'tablette', 'cacao',
+      'chocolat en poudre', 'nesquik', 'bonbon', 'chewing-gum', 'haribo', 'chips', 'tuc', 'cracker', 'biscuit aperitif',
+      'cacahuete', 'pistache', 'noix', 'noix de cajou', 'amande', 'noisette', 'fruits secs', 'raisin sec',
+      'pruneau', 'abricot sec', 'the', 'infusion', 'tisane', 'cafe', 'dosette', 'capsule', 'cafe moulu',
+      'expresso', 'chicoree', 'lait concentre', 'lait de coco', 'creme de coco', 'tofu', 'pate feuilletee',
+      'pate brisee', 'pate a pizza', 'pate sablee', 'fond de tarte', 'gelatine', 'agar', 'arome', 'vanille',
+      'pepites de chocolat', 'compote', 'pate de fruit', 'galette de riz', 'houmous', 'tarama',
+    ],
+  },
+];
